@@ -3,8 +3,8 @@ requires = ["setuptools", "setuptools-scm"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "HomologyViz"
-version = "0.0.20"
+name = "homologyviz"
+version = "0.0.21"
 authors = [
     {name = "Ivan Munoz-Gutierrez", email = "ivan.munoz.gutierrez@gmail.com"},
 ]

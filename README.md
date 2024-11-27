@@ -1,5 +1,5 @@
 <p align="center">
-   <img src="src/homologyviz/images/logo.png" alt="HomologyViz" width="450">
+   <img src="https://raw.githubusercontent.com/ivanmugu/homologyviz/refs/heads/main/src/homologyviz/images/logo.png" alt="HomologyViz" width="450">
 </p>
 
 <div align="center">
@@ -43,7 +43,7 @@ homologyviz
 
 Output:
 <p align="center">
-   <img src="src/homologyviz/images/HomologyViz_app.png" alt="HomologyViz" width="600">
+   <img src="https://raw.githubusercontent.com/ivanmugu/homologyviz/refs/heads/main/src/homologyviz/images/HomologyViz_app.png" alt="HomologyViz" width="600">
 </p>
 
 
