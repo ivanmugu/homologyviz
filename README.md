@@ -1,5 +1,5 @@
 <p align="center">
-   <img src="https://raw.githubusercontent.com/ivanmugu/homologyviz/refs/heads/main/src/homologyviz/images/logo.png" alt="HomologyViz" width="450">
+   <img src="https://raw.githubusercontent.com/ivanmugu/homologyviz/refs/heads/main/src/homologyviz/assets/logo.png" alt="HomologyViz" width="450">
 </p>
 
 <div align="center">

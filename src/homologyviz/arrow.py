@@ -25,7 +25,7 @@ class Arrow:
     ratio_tail_head_width : float
         Ration between tail's width and arrow's head width (default: 0.5).
     head_width : int
-        Head width. It is de distance the y-axis between the two vertexes of
+        Head width. It is de distance in the y-axis between the two vertexes of
         the triangle that makes the head.
     head_height : int
         Head height. It is the distance in the x-axis between the base and the
@@ -53,7 +53,7 @@ class Arrow:
     def coordinates_arrow_forward(self):
         """Get forward arrow shape coordinates horizontally."""
         height = self.x2 - self.x1
-        # If total height is smaller or equal to the arrow's head hight plot
+        # If total height is smaller or equal to the arrow's head hight, then plot
         # only head
         if height <= self.head_height:
             x_1 = self.x1

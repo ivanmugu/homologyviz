@@ -29,6 +29,10 @@ from homologyviz.gb_files_manipulation import GenBankRecord, BlastnAlignment
 from homologyviz import miscellaneous as misc
 
 
+# TODO: when adjusting alignments to the center or right, don't modify the cds data.
+# Instead, create a dictionary that stores the positions of the genes and sequence.
+
+
 # = FUNCTIONS FOR ALIGNMENTS ============================================================
 def get_longest_sequence(gb_records: list[GenBankRecord]) -> int:
     """Find the longest sequence in the gb records."""

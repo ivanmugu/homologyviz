@@ -706,10 +706,14 @@ def create_dash_app() -> dash.Dash:
                 dmc.GridCol(
                     html.Div(  # ==== PLOT CONTROL ===================================== #
                         children=[
-                            html.Div(
-                                "HomologyViz",
-                                className="text-white fw-bold text-center my-2",
-                                style={"fontSize": "24px"},
+                            html.Img(
+                                src="/assets/logo.png",
+                                className="mx-auto my-2 d-block text-white fw-bold text-center",
+                                alt="HomologyViz",
+                                style={
+                                    "height": "40px",
+                                    "fontSize": "24px",
+                                },
                             ),
                             html.Div(  # TABS MENU
                                 dbc.Tabs(
