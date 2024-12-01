@@ -59,14 +59,17 @@ def find_lowest_and_highest_homology(alignments: list[BlastnAlignment]) -> tuple
 def adjust_positions_sequences_right(
     gb_records: list[GenBankRecord], size_longest_sequence: int
 ) -> None:
-    """Adjust the position of the sequences to the right including data in CDSs."""
+    """Adjust the position of the sequences to the right including the CDSs.
+
+    Check the GenBankRecord and CodingSequence classes to understand their structure
+    """
     for record in gb_records:
         delta = size_longest_sequence - record.length
         record.sequence_start = record.sequence_start + delta
         record.sequence_end = record.sequence_end + delta
-        for sequence in record.cds:
-            sequence.start = sequence.start + delta
-            sequence.end = sequence.end + delta
+        for coding_sequence in record.cds:
+            coding_sequence.start = coding_sequence.start + delta
+            coding_sequence.end = coding_sequence.end + delta
 
 
 def adjust_positions_alignments_right(
@@ -86,14 +89,17 @@ def adjust_positions_alignments_right(
 def adjust_positions_sequences_center(
     gb_records: list[GenBankRecord], size_longest_sequence: int
 ) -> None:
-    """Adjust position of sequences to the center including data in CDSs."""
+    """Adjust position of sequences to the center including the CDSs.
+
+    Check the GenBankRecord and CodingSequence classes to understand their structure
+    """
     for record in gb_records:
         shift = (size_longest_sequence - record.length) / 2
         record.sequence_start = record.sequence_start + shift
         record.sequence_end = record.sequence_end + shift
-        for sequence in record.cds:
-            sequence.start = sequence.start + shift
-            sequence.end = sequence.end + shift
+        for coding_sequence in record.cds:
+            coding_sequence.start = coding_sequence.start + shift
+            coding_sequence.end = coding_sequence.end + shift
 
 
 def adjust_positions_alignments_center(

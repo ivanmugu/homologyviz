@@ -22,7 +22,7 @@ import webbrowser
 
 import dash
 import dash_ag_grid as dag
-from dash import html, dcc, Input, Output, State, _dash_renderer
+from dash import Dash, html, dcc, Input, Output, State, _dash_renderer
 import dash_bootstrap_components as dbc
 import dash_mantine_components as dmc
 from dash_iconify import DashIconify
@@ -686,19 +686,9 @@ def make_tab_save() -> dbc.Tab:
     return tab_save
 
 
-def create_dash_app() -> dash.Dash:
-    """Make the app layout"""
-    _dash_renderer._set_react_version("18.2.0")
-
-    # Initialize the Dash app with a Bootstrap theme
-    app = dash.Dash(__name__, external_stylesheets=[dbc.themes.DARKLY])
-
-    # Variables to monitor the Dash app tab status
-    last_heartbeat = {"timestamp": time.time(), "counter": 0}
-    timeout_seconds = 5
-    heartbeat_monitor_started = False
-
-    # App layout
+def create_layout(app: Dash) -> Dash:
+    """Create app layout."""
+    # Wrap layout with dmc.MantineProvider
     app.layout = dmc.MantineProvider(
         dmc.Grid(
             children=[
@@ -770,6 +760,25 @@ def create_dash_app() -> dash.Dash:
         ),
         forceColorScheme="dark",
     )
+
+    return app
+
+
+def create_dash_app() -> dash.Dash:
+    """Make the app."""
+    # This variable must be set according to the Dash Mantine Components
+    _dash_renderer._set_react_version("18.2.0")
+
+    # Initialize the Dash app with a Bootstrap theme
+    app = dash.Dash(__name__, external_stylesheets=[dbc.themes.DARKLY])
+
+    # Variables to monitor the Dash app tab status
+    last_heartbeat = {"timestamp": time.time(), "counter": 0}
+    timeout_seconds = 5
+    heartbeat_monitor_started = False
+
+    # App layout
+    app = create_layout(app)
 
     # ================================= CALLBACKS ====================================== #
     # ==== files-table for selected GenBank files ====================================== #
