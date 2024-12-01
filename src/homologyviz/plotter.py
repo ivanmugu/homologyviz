@@ -233,7 +233,12 @@ def plot_colorbar_legend(
         go.Scatter(
             y=[None],  # Dummy values
             x=[None],  # Dummy values
-            customdata=[f"min_identity={min_value}", f"max_identity={max_value}"],
+            customdata=[
+                {
+                    "min_identity": min_value,
+                    "max_identity": max_value,
+                }
+            ],
             name="colorbar legend",
             mode="markers",
             marker=dict(
@@ -264,9 +269,9 @@ def plot_polygon(
     fig: Figure,
     x_values: list,
     y_values: list,
-    color="blue",
-    name=None,
-    custom_data=None,
+    color: str = "blue",
+    name: str = "",
+    customdata: list = [{}],
 ) -> None:
     """Plot polygon representing genes or homology regions"""
     fig.add_trace(
@@ -279,7 +284,7 @@ def plot_polygon(
             line=dict(color=color, width=1),
             fillcolor=color,
             name="",
-            customdata=custom_data,
+            customdata=customdata,
             hoverlabel=dict(font_size=14),
             hovertemplate="%{text}<extra></extra>",
         )
@@ -290,9 +295,9 @@ def plot_line(
     fig: Figure,
     x_values: list,
     y_values: list,
-    name=None,
-    custom_data=[],
-    color="black",
+    name: str | None = None,
+    customdata: list = [{}],
+    color: str = "black",
 ) -> None:
     """Plot line representing DNA sequences"""
     fig.add_trace(
@@ -301,7 +306,7 @@ def plot_line(
             y=y_values,
             mode="lines",
             name=name,
-            customdata=custom_data,
+            customdata=customdata,
             line=dict(color=color, width=4),
             hoverlabel=dict(font_size=14),
             hovertemplate=f"{name}<extra></extra>",
@@ -331,7 +336,15 @@ def plot_dna_sequences(
             x_values,
             y_values,
             name=trace_name,
-            custom_data=[accession, record_name, file_name, longest_sequence],
+            customdata=[
+                {
+                    "type": "sequence_info",
+                    "accession": accession,
+                    "name": record_name,
+                    "fname": file_name,
+                    "longest_sequence": longest_sequence,
+                },
+            ],
         )
         y_distance -= y_separation
     return fig
@@ -345,7 +358,7 @@ def plot_genes(
 ) -> Figure:
     """Plot arrows representing genes.
 
-    The custom_data has information for annotating the plot dinamically in Dash.
+    The customdata has information for annotating the plot dinamically in Dash.
     """
     # Number of gb_records
     number_gb_records = len(gb_records)
@@ -373,13 +386,15 @@ def plot_genes(
                 y_values,
                 color=color,
                 name=name,
-                custom_data=[
-                    "type=gene_info",
-                    f"gb_record={i}",
-                    f"number_gb_records={number_gb_records}",
-                    f"x_start={cds.start}",
-                    f"x_end={cds.end}",
-                    f"y={y}",
+                customdata=[
+                    {
+                        "type": "gene_info",
+                        "gb_record": i,
+                        "number_gb_records": number_gb_records,
+                        "x_start": cds.start,
+                        "x_end": cds.end,
+                        "y": y,
+                    }
                 ],
             )
         y -= y_separation
@@ -454,91 +469,15 @@ def plot_homology_regions(
                 ypoints,
                 color=color,
                 name=f"Identity: {homology*100:.2f}%",
-                custom_data=[
-                    "type=homology_info",
-                    f"Identity={homology}",
-                    f"homology_length={homology_length}",
+                customdata=[
+                    {
+                        "type": "homology_info",
+                        "identity": homology,
+                        "homology_length": homology_length,
+                    },
                 ],
             )
         y_distances -= y_separation
-    return fig
-
-
-def annotate_genes_top(
-    fig: Figure, gb_records: list[GenBankRecord], y_separation: int = 10
-) -> Figure:
-    """Annotate genes of top sequence."""
-    gb_record = gb_records[0]
-    y_distance = len(gb_records) * y_separation
-    for gene in gb_record.cds:
-        x_position = (gene.start + gene.end) / 2
-        y_position = y_distance
-        name = gene.product
-        fig.add_annotation(
-            x=x_position,
-            y=y_position + 1.1,
-            text=name,
-            showarrow=False,
-            textangle=270,
-            font=dict(size=16),
-            xanchor="center",
-            yanchor="bottom",
-        )
-    return fig
-
-
-def annotate_genes_bottom(
-    fig: Figure, gb_records: list[GenBankRecord], y_separation: int = 10
-) -> Figure:
-    """Annotate genes of top sequence."""
-    gb_record = gb_records[len(gb_records) - 1]
-    for gene in gb_record.cds:
-        x_position = (gene.start + gene.end) / 2
-        y_position = y_separation
-        name = gene.product
-        fig.add_annotation(
-            x=x_position,
-            y=y_position - 1.1,
-            text=name,
-            showarrow=False,
-            textangle=270,
-            font=dict(size=16),
-            xanchor="center",
-            yanchor="top",
-        )
-    return fig
-
-
-def annotate_dna_sequences(
-    fig: Figure,
-    gb_records: list[GenBankRecord],
-    longest_sequence: int,
-    sequence_name: str = "accession",
-    y_separation: int = 10,
-    padding: int = 10,
-) -> Figure:
-    """Annotate DNA sequences."""
-    y_distance = len(gb_records) * y_separation
-    for record in gb_records:
-        if sequence_name == "accession":
-            sequence_name = record.accession
-        if sequence_name == "name":
-            sequence_name = record.name
-        if sequence_name == "fname":
-            sequence_name = record.file_name
-        fig.add_annotation(
-            x=longest_sequence + padding,
-            # x=0.95,
-            # xref="paper",
-            xref="x",
-            y=y_distance,
-            text=sequence_name,
-            font=dict(size=18),
-            showarrow=False,
-            xanchor="left",
-            yanchor="middle",
-        )
-        y_distance -= y_separation
     return fig
 
 
@@ -547,18 +486,18 @@ def annotate_dna_sequences_using_trace_customdata(
 ) -> Figure:
     """Annotate dna sequences using trace customdata
 
-    The trace customdata is created when plotting dna sequences and has the following
-    information:
-    custom_data: list[str, str, str, int] = [
-        accession, record_name, file_name, longest_sequence
-    ]
+    The trace customdata is created when plotting using the plot_dna_sequences function.
+    annotate_with options are "accession", "name", "fname".
     """
-    option = ["accession", "name", "fname"].index(annotate_with)
     for trace in figure["data"]:
-        if ("name" in trace) and ("Sequence:" in trace["name"]):
-            text = trace["customdata"][option]
+        if "customdata" not in trace:
+            continue
+        if trace["customdata"] is None:
+            continue
+        if "sequence_info" in trace["customdata"][0].get("type", ""):
+            text = trace["customdata"][0][annotate_with]
             figure.add_annotation(
-                x=trace["customdata"][3] + padding,
+                x=trace["customdata"][0]["longest_sequence"] + padding,
                 xref="x",
                 y=trace["y"][0],
                 name=f"Sequence annotation: {text}",
@@ -572,17 +511,23 @@ def annotate_dna_sequences_using_trace_customdata(
 
 
 def annotate_genes_top_using_trace_customdata(figure: Figure) -> Figure:
+    """Annotate top genes using trace customdata
+
+    The trace customdata is created when plotting using the plot_genes function.
+    """
     for trace in figure["data"]:
+        if "customdata" not in trace:
+            continue
         if trace["customdata"] is None:
             continue
-        if "gene_info" in trace["customdata"][0]:
-            gb_record = int(trace["customdata"][1].split("=")[1])
+        if "gene_info" in trace["customdata"][0].get("type", ""):
+            gb_record = trace["customdata"][0]["gb_record"]
             # If gb_record is not the top (i. e. zero), continue.
             if gb_record != 0:
                 continue
-            x_start = float(trace["customdata"][3].split("=")[1])
-            x_end = float(trace["customdata"][4].split("=")[1])
-            y = float(trace["customdata"][5].split("=")[1])
+            x_start = float(trace["customdata"][0]["x_start"])
+            x_end = float(trace["customdata"][0]["x_end"])
+            y = float(trace["customdata"][0]["y"])
             x_position = (x_start + x_end) / 2
             y_position = y
             name = trace["text"]
@@ -601,19 +546,25 @@ def annotate_genes_top_using_trace_customdata(figure: Figure) -> Figure:
 
 
 def annotate_genes_bottom_using_trace_customdata(figure: Figure) -> Figure:
+    """Annotate bottom genes using trace customdata
+
+    The trace customdata is created when plotting using the plot_genes function.
+    """
     for trace in figure["data"]:
+        if "customdata" not in trace:
+            continue
         if trace["customdata"] is None:
             continue
-        if "gene_info" in trace["customdata"][0]:
-            gb_record = int(trace["customdata"][1].split("=")[1])
-            number_gb_records = int(trace["customdata"][2].split("=")[1])
+        if "gene_info" in trace["customdata"][0].get("type", ""):
+            gb_record = trace["customdata"][0]["gb_record"]
+            number_gb_records = trace["customdata"][0]["number_gb_records"]
             # if gb_record is not the last one, continue
             if gb_record != (number_gb_records - 1):
                 continue
             # print(trace)
-            x_start = float(trace["customdata"][3].split("=")[1])
-            x_end = float(trace["customdata"][4].split("=")[1])
-            y = float(trace["customdata"][5].split("=")[1])
+            x_start = float(trace["customdata"][0]["x_start"])
+            x_end = float(trace["customdata"][0]["x_end"])
+            y = float(trace["customdata"][0]["y"])
             x_position = (x_start + x_end) / 2
             y_position = y
             name = trace["text"]
@@ -706,10 +657,15 @@ def change_homoloy_color_traces(
         vmax=vmax_truncate,
     )
     for trace in figure["data"]:
-        if ("customdata" in trace) and ("homology_info" in trace["customdata"][0]):
+        if "customdata" not in trace:
+            continue
+        if trace["customdata"] is None:
+            continue
+        if "homology_info" in trace["customdata"][0].get("type", ""):
+            print(trace["customdata"][0].get("type", ""))
             # Get identity information from customdata
-            identity = trace["customdata"][1]
-            identity = float(identity.split("=")[1])
+            identity = trace["customdata"][0]["identity"]
+            identity = float(identity)
             # Sample colorscale with identity value.
             if set_colorscale_to_extreme_homologies:
                 color = sample_colorscale_setting_lowest_and_highest_homologies(
