@@ -1,8 +1,8 @@
-"""Functions and classes to manipulate genbank files for msplotly.
+"""Functions and classes to manipulate GenBank files for HomologyViz.
 
 License
 -------
-This file is part of MSPloter
+This file is part of HomologyViz
 BSD 3-Clause License
 Copyright (c) 2024, Ivan Munoz Gutierrez
 """
@@ -15,53 +15,111 @@ from Bio.Blast import NCBIXML
 from Bio.SeqRecord import SeqRecord
 
 
+class CodingSequence:
+    """Store Coding Sequence (CDS) information from a GenBank file.
+
+    This is a simple class designed to store metadata from the CDS of a GenBank file for
+    downstream applications such as visualization or analysis. It stores attributes like
+    gene, product, location of the cds (start and end), direction of cds (strand), and
+    color of cds. The start_plot and end_plot attributes are used for ploting and they
+    are modified if the sequences in the plot are aligned to the center or the right.
+
+    Attributes
+    ----------
+    gene : str
+    product : str
+    start : int
+    end : int
+    strans : int
+    color : str
+    start_plot : int
+    end_plot : int
+    """
+
+    def __init__(
+        self,
+        gene: str,
+        product: str,
+        start: str | int,
+        end: str | int,
+        strand: str | int,
+        color: str,
+        start_plot: int,
+        end_plot: int,
+    ) -> None:
+        """Initialize CodingSequence to sotre information from GenBank file."""
+        self.gene = gene
+        self.product = product
+        self.start = int(start)
+        self.end = int(end)
+        self.strand = int(strand)
+        self.color = color
+        self.start_plot = start_plot
+        self.end_plot = end_plot
+
+
 class GenBankRecord:
-    """Store relevant info from a GenBank file.
+    """Store and manage relevant info extracted from a GenBank file.
+
+    This class is designed to parse and store metadata and features of a GenBank file for
+    downstream applications such as visualization or analysis. It extracts attributes like
+    the sequence name, description, coding sequences, and sequence length, providing a
+    structured representation of the data.
 
     Attributes
     ----------
     file_name : str
-        file name.
+        GenBank file name.
+    file_path : Path
+        Path to the GenBank file.
     name : str
-        Sequence name shown next to the `LOCUS` tag.
+        Sequence name shown next to the `LOCUS` tag in the GenBank file.
     accession : str
         Sequence accession number with version.
     description : str
-        Description shown next to the `DEFINITION` tag.
+        Description shown next to the `DEFINITION` tag in the GenBank file.
     length : int
         Sequence length.
     sequence_start : int
         Start coordinate used for plotting. Default value is zero but changes
-        if `alignments_position` of `MakeFigure` class is set to center or
-        left.
+        if the alignments in the plot are set to center or right.
     sequence_end : int
-        End coordinate used for plotting. Default value is zero but changes if
-        `alignments_position` of `MakeFigure` class is set to center or left.
-    cds : list
-        List of `CodingSequence` classes with info of `CDS` tags as product,
-        start, end, strand, and color.
+        End coordinate used for plotting. Default value is `length` but changes if
+        the alignments in the plot are set to center or right.
+    cds : list[ CodingSequence ]
+        List of `CodingSequence` objects containing information about coding
+        sequences (CDS tags) in the GenBank file. Each object includes details
+        such as product name, start and end coordinates, strand orientation,
+        and assigned color for visualization.
     num_cds : int
-        Number of CDSs
+        Number of CDSs parsed from the GenBank file.
     """
 
-    def __init__(self, file_name):
+    def __init__(self, file_path: Path) -> None:
+        """Initialize a GenBankRecord to store relevant information from a GenBank file
+
+        Parameters
+        ----------
+        file_name : Path object
+            Path to file the GenBank file.
         """
-        file_name : Path oject
-            Path to file.
-        """
-        record = SeqIO.read(file_name, "genbank")
-        self.file_name = file_name.stem
+        # Read the file into a temporary variable
+        record = SeqIO.read(file_path, "genbank")
+
+        # Extract the needed information
+        self.file_path = file_path
+        self.file_name = file_path.stem
         self.name = record.name
         self.accession = record.id
         self.description = record.description
         self.length = len(record)
         self.sequence_start = 0
         self.sequence_end = self.length
-        self.cds = self.parse_gb(record)
+        self.cds = self._parse_genbank(record)
         self.num_cds = len(self.cds)
 
-    def parse_gb(self, record):
-        """Parse gb file and make a list of `CodingSequence` classes.
+    def _parse_genbank(self, record) -> list[CodingSequence]:
+        """Parse GenBank file and make a list of `CodingSequence` classes.
 
         Parameters
         ----------
@@ -98,21 +156,70 @@ class GenBankRecord:
                     end = part._end
                 # Append cds.
                 coding_sequences.append(
-                    CodingSequence(gene, product, start, end, strand, color)
+                    CodingSequence(
+                        gene=gene,
+                        product=product,
+                        start=start,
+                        end=end,
+                        strand=strand,
+                        color=color,
+                        start_plot=start,
+                        end_plot=end,
+                    )
                 )
         return coding_sequences
 
 
-class CodingSequence:
-    """Store Coding Sequence (CDS) information from gb file."""
+class RegionAlignmentResult:
+    """Store a BLASTn result of a region that aligned.
 
-    def __init__(self, gene, product, start, end, strand, color):
-        self.gene = gene
-        self.product = product
-        self.start = int(start)
-        self.end = int(end)
-        self.strand = int(strand)
-        self.color = color
+    This is a simple class designed to store metadata from the a BLASTn result. It stores
+    attributes like query from and to, hit from and to, identity, homology, and alignment
+    length.
+
+    Attributes
+    ----------
+    query_from : int
+    query_to : int
+    query_from_plot : int
+    query_to_plot : int
+    hit_from : int
+    hit_to : int
+    hit_from_plot : int
+    hit_to_plot : int
+    identity: int
+    positive: int
+    align_len: int
+    homology: float
+    """
+
+    def __init__(
+        self,
+        query_from: int,
+        query_to: int,
+        query_from_plot: int,
+        query_to_plot: int,
+        hit_from: int,
+        hit_to: int,
+        hit_from_plot: int,
+        hit_to_plot: int,
+        identity: int,
+        positive: int,
+        align_len: int,
+    ) -> None:
+        """Initialize RegionAlignmentResult to store information from a BLASTn alignment."""
+        self.query_from = query_from
+        self.query_to = query_to
+        self.query_from_plot = query_from_plot
+        self.query_to_plot = query_to_plot
+        self.hit_from = hit_from
+        self.hit_to = hit_to
+        self.hit_from_plot = hit_from_plot
+        self.hit_to_plot = hit_to_plot
+        self.identity = identity
+        self.positive = positive
+        self.align_len = align_len
+        self.homology = identity / align_len
 
 
 class BlastnAlignment:
@@ -131,23 +238,25 @@ class BlastnAlignment:
     regions : list
         List of `RegionAlignmentResult` classes with info of aligned region as
         query_from, query_to, hit_from, hit_to, and identity.
-
-    Methods
-    -------
-    blastn_alignment_to_dict
-        Makes a Dict representing `BlastnAlignmet` class.
     """
 
-    def __init__(self, xml_alignment_result):
+    def __init__(self, xml_alignment_result: Path):
+        """Initialize BlastnAlignment class
+
+        Parameters
+        ----------
+        xml_alignment_result : Path
+            Path to the xml file that has the alignment information.
+        """
         with open(xml_alignment_result, "r") as result_handle:
             blast_record = NCBIXML.read(result_handle)
             self.query_name = blast_record.query
             self.hit_name = blast_record.alignments[0].hit_def
             self.query_len = int(blast_record.query_length)
             self.hit_len = int(blast_record.alignments[0].length)
-            self.regions = self.parse_blast_regions(blast_record)
+            self.regions = self._parse_blast_regions(blast_record)
 
-    def parse_blast_regions(self, blast_record):
+    def _parse_blast_regions(self, blast_record) -> list[RegionAlignmentResult]:
         """Parse blastn aligned regions to store the information.
 
         Parameters
@@ -166,30 +275,18 @@ class BlastnAlignment:
                 RegionAlignmentResult(
                     query_from=int(region.query_start),
                     query_to=int(region.query_end),
+                    query_from_plot=int(region.query_start),
+                    query_to_plot=int(region.query_end),
                     hit_from=int(region.sbjct_start),
                     hit_to=int(region.sbjct_end),
+                    hit_from_plot=int(region.sbjct_start),
+                    hit_to_plot=int(region.sbjct_end),
                     identity=int(region.identities),
                     positive=int(region.positives),
                     align_len=int(region.align_length),
                 )
             )
         return regions
-
-
-class RegionAlignmentResult:
-    """Save blastn results of region that aligned."""
-
-    def __init__(
-        self, query_from, query_to, hit_from, hit_to, identity, positive, align_len
-    ):
-        self.query_from = query_from
-        self.query_to = query_to
-        self.hit_from = hit_from
-        self.hit_to = hit_to
-        self.identity = identity
-        self.positive = positive
-        self.align_len = align_len
-        self.homology = identity / align_len
 
 
 def make_fasta_files(gb_files: list[Path], output_path: Path) -> list[Path]:
@@ -299,6 +396,11 @@ def get_gb_records(gb_files: list[Path]) -> list:
     """Parse gb files and make list of `GenBankRecord` classes."""
     gb_records = [GenBankRecord(gb_file) for gb_file in gb_files]
     return gb_records
+
+
+def convert_gb_records_to_df():
+    """"""
+    pass
 
 
 if __name__ == "__main__":

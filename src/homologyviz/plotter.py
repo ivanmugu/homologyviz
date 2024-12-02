@@ -61,29 +61,43 @@ def adjust_positions_sequences_right(
 ) -> None:
     """Adjust the position of the sequences to the right including the CDSs.
 
-    Check the GenBankRecord and CodingSequence classes to understand their structure
+    This function modifies the start_plot and end_plot attributes of the CodingSequence
+    objects present in the GenBankRecord objects.
     """
+    # Iterate over list of GenBankRecord objects
     for record in gb_records:
+        # Find the ammount to add to move the positions to the right
         delta = size_longest_sequence - record.length
+        # Modify the position for ploting the sequence
         record.sequence_start = record.sequence_start + delta
         record.sequence_end = record.sequence_end + delta
+        # Iterate over cds, which is a list of CodingSequence objects, to modify
+        # start_plot and end_plot
         for coding_sequence in record.cds:
-            coding_sequence.start = coding_sequence.start + delta
-            coding_sequence.end = coding_sequence.end + delta
+            coding_sequence.start_plot = coding_sequence.start_plot + delta
+            coding_sequence.end_plot = coding_sequence.end_plot + delta
 
 
 def adjust_positions_alignments_right(
     alignments: list[BlastnAlignment], size_longest_sequence: int
 ) -> None:
-    """Adjust position of the alignments to the right."""
+    """Adjust position of the alignments to the right.
+
+    This function modifies the query_from_plot, query_to_plot, hit_from_plot, and
+    hit_to_plot attributes of the RegionAlignmentResult objects present in the
+    BlastAlignment objects.
+    """
+    # Iterate over list of BlastnAlignment objects
     for alignment in alignments:
+        # Find the amount to add to shift the alignments the the right.
         delta_query = size_longest_sequence - alignment.query_len
         delta_hit = size_longest_sequence - alignment.hit_len
+        # Iterate over RegionAlignmentResults objects to modify the plotting positions.
         for region in alignment.regions:
-            region.query_from = region.query_from + delta_query
-            region.query_to = region.query_to + delta_query
-            region.hit_from = region.hit_from + delta_hit
-            region.hit_to = region.hit_to + delta_hit
+            region.query_from_plot = region.query_from_plot + delta_query
+            region.query_to_plot = region.query_to_plot + delta_query
+            region.hit_from_plot = region.hit_from_plot + delta_hit
+            region.hit_to_plot = region.hit_to_plot + delta_hit
 
 
 def adjust_positions_sequences_center(
@@ -91,29 +105,43 @@ def adjust_positions_sequences_center(
 ) -> None:
     """Adjust position of sequences to the center including the CDSs.
 
-    Check the GenBankRecord and CodingSequence classes to understand their structure
+    This function modifies the start_plot and end_plot attributes of the CodingSequence
+    objects present in the GenBankRecord objects.
     """
+    # Iterate over list of GenBankRecord objects
     for record in gb_records:
+        # Find the ammount to add to move the positions to the right
         shift = (size_longest_sequence - record.length) / 2
+        # Modify the position for ploting the sequence
         record.sequence_start = record.sequence_start + shift
         record.sequence_end = record.sequence_end + shift
+        # Iterate over cds, which is a list of CodingSequence objects, to modify
+        # start_plot and end_plot
         for coding_sequence in record.cds:
-            coding_sequence.start = coding_sequence.start + shift
-            coding_sequence.end = coding_sequence.end + shift
+            coding_sequence.start_plot = coding_sequence.start_plot + shift
+            coding_sequence.end_plot = coding_sequence.end_plot + shift
 
 
 def adjust_positions_alignments_center(
     alignments: list[BlastnAlignment], size_longest_sequence: int
 ) -> None:
-    """Adjust position of alignmets to the center."""
+    """Adjust position of alignmets to the center.
+
+    This function modifies the query_from_plot, query_to_plot, hit_from_plot, and
+    hit_to_plot attributes of the RegionAlignmentResult objects present in the
+    BlastAlignment objects.
+    """
+    # Iterate over list of BlastnAlignment objects
     for alignment in alignments:
+        # Find the amount to add to shift the alignments the the center.
         shift_q = (size_longest_sequence - alignment.query_len) / 2
         shift_h = (size_longest_sequence - alignment.hit_len) / 2
+        # Iterate over RegionAlignmentResults objects to modify the plotting positions.
         for region in alignment.regions:
-            region.query_from = region.query_from + shift_q
-            region.query_to = region.query_to + shift_q
-            region.hit_from = region.hit_from + shift_h
-            region.hit_to = region.hit_to + shift_h
+            region.query_from_plot = region.query_from_plot + shift_q
+            region.query_to_plot = region.query_to_plot + shift_q
+            region.hit_from_plot = region.hit_from_plot + shift_h
+            region.hit_to_plot = region.hit_to_plot + shift_h
 
 
 # = FUNCTIONS FOR PLOTTING ==============================================================
@@ -378,8 +406,8 @@ def plot_genes(
     # Iterate over GenBankRecords to plot genes.
     for i, record in enumerate(gb_records):
         for cds in record.cds:
-            x1 = cds.start
-            x2 = cds.end
+            x1 = cds.start_plot
+            x2 = cds.end_plot
             color = cds.color
             arrow = Arrow(x1=x1, x2=x2, y=y, head_height=head_height)
             x_values, y_values = arrow.get_coordinates()
@@ -395,10 +423,12 @@ def plot_genes(
                 customdata=[
                     {
                         "type": "gene_info",
-                        "gb_record": i,
+                        "gb_record_number": i,
                         "number_gb_records": number_gb_records,
                         "x_start": cds.start,
                         "x_end": cds.end,
+                        "x_start_plot": cds.start_plot,
+                        "x_end_plot": cds.end_plot,
                         "y": y,
                     }
                 ],
@@ -430,10 +460,10 @@ def plot_homology_regions(
         # On each alignment iterate over the homologous regions for plotting
         for region in alignment.regions:
             # Get region coordinates
-            x1 = region.query_from
-            x2 = region.query_to
-            x3 = region.hit_to
-            x4 = region.hit_from
+            x1 = region.query_from_plot
+            x2 = region.query_to_plot
+            x3 = region.hit_to_plot
+            x4 = region.hit_from_plot
             y1 = y_distances - homology_padding
             y2 = y_distances - homology_padding
             y3 = y_distances - y_separation + homology_padding
@@ -527,12 +557,12 @@ def annotate_genes_top_using_trace_customdata(figure: Figure) -> Figure:
         if trace["customdata"] is None:
             continue
         if "gene_info" in trace["customdata"][0].get("type", ""):
-            gb_record = trace["customdata"][0]["gb_record"]
+            gb_record = trace["customdata"][0]["gb_record_number"]
             # If gb_record is not the top (i. e. zero), continue.
             if gb_record != 0:
                 continue
-            x_start = float(trace["customdata"][0]["x_start"])
-            x_end = float(trace["customdata"][0]["x_end"])
+            x_start = float(trace["customdata"][0]["x_start_plot"])
+            x_end = float(trace["customdata"][0]["x_end_plot"])
             y = float(trace["customdata"][0]["y"])
             x_position = (x_start + x_end) / 2
             y_position = y
@@ -562,14 +592,14 @@ def annotate_genes_bottom_using_trace_customdata(figure: Figure) -> Figure:
         if trace["customdata"] is None:
             continue
         if "gene_info" in trace["customdata"][0].get("type", ""):
-            gb_record = trace["customdata"][0]["gb_record"]
+            gb_record = trace["customdata"][0]["gb_record_number"]
             number_gb_records = trace["customdata"][0]["number_gb_records"]
             # if gb_record is not the last one, continue
             if gb_record != (number_gb_records - 1):
                 continue
             # print(trace)
-            x_start = float(trace["customdata"][0]["x_start"])
-            x_end = float(trace["customdata"][0]["x_end"])
+            x_start = float(trace["customdata"][0]["x_start_plot"])
+            x_end = float(trace["customdata"][0]["x_end_plot"])
             y = float(trace["customdata"][0]["y"])
             x_position = (x_start + x_end) / 2
             y_position = y

@@ -1046,8 +1046,6 @@ def create_dash_app() -> dash.Dash:
         [
             Output("erase-button", "disabled"),
             Output("update-annotations", "disabled"),
-            # Output("update-annotate-genes-button", "disabled"),
-            # Output("update-scale-bar-button", "disabled"),
             Output("change-gene-color-button", "disabled"),
             Output("change-homology-color-button", "disabled"),
             Output("select-change-color-button", "disabled"),
@@ -1218,8 +1216,6 @@ def create_dash_app() -> dash.Dash:
             last_heartbeat["timestamp"] = time.time()
             last_heartbeat["counter"] = counter
 
-            # print(f"Heartbeat received. Counter: {counter}")
-            # print(f"last heartbeat from heartbeat: {last_heartbeat}")
             return jsonify(success=True), 200
         except Exception as e:
             print(f"Error in /heartbeat route: {e}", flush=True)
