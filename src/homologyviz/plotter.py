@@ -15,6 +15,7 @@ Copyright (c) 2024, Ivan Munoz Gutierrez
 
 import math
 from pathlib import Path
+from pandas import DataFrame
 
 import plotly.graph_objects as go
 from plotly.graph_objects import Figure, Heatmap
@@ -25,126 +26,14 @@ import matplotlib.colors as mcolors
 from homologyviz.arrow import Arrow
 from homologyviz.rectangle_bezier import RectangleCurveHeight
 from homologyviz import gb_files_manipulation as genbank
-from homologyviz.gb_files_manipulation import GenBankRecord, BlastnAlignment
+from homologyviz.gb_files_manipulation import PlotParameters
 from homologyviz import miscellaneous as misc
 
 
-# TODO: when adjusting alignments to the center or right, don't modify the cds data.
-# Instead, create a dictionary that stores the positions of the genes and sequence.
-
-
-# = FUNCTIONS FOR ALIGNMENTS ============================================================
-def get_longest_sequence(gb_records: list[GenBankRecord]) -> int:
-    """Find the longest sequence in the gb records."""
-    longest = 0
-    for record in gb_records:
-        if record.length > longest:
-            longest = record.length
-    return longest
-
-
-def find_lowest_and_highest_homology(alignments: list[BlastnAlignment]) -> tuple:
-    """Find the lowest and highest homology in a list of BlastnAlignmet objects."""
-    lowest = 1
-    highest = 0
-    for alignment in alignments:
-        for region in alignment.regions:
-            if region.homology < lowest:
-                lowest = region.homology
-            if region.homology > highest:
-                highest = region.homology
-    return lowest, highest
-
-
-def adjust_positions_sequences_right(
-    gb_records: list[GenBankRecord], size_longest_sequence: int
-) -> None:
-    """Adjust the position of the sequences to the right including the CDSs.
-
-    This function modifies the start_plot and end_plot attributes of the CodingSequence
-    objects present in the GenBankRecord objects.
-    """
-    # Iterate over list of GenBankRecord objects
-    for record in gb_records:
-        # Find the ammount to add to move the positions to the right
-        delta = size_longest_sequence - record.length
-        # Modify the position for ploting the sequence
-        record.sequence_start = record.sequence_start + delta
-        record.sequence_end = record.sequence_end + delta
-        # Iterate over cds, which is a list of CodingSequence objects, to modify
-        # start_plot and end_plot
-        for coding_sequence in record.cds:
-            coding_sequence.start_plot = coding_sequence.start_plot + delta
-            coding_sequence.end_plot = coding_sequence.end_plot + delta
-
-
-def adjust_positions_alignments_right(
-    alignments: list[BlastnAlignment], size_longest_sequence: int
-) -> None:
-    """Adjust position of the alignments to the right.
-
-    This function modifies the query_from_plot, query_to_plot, hit_from_plot, and
-    hit_to_plot attributes of the RegionAlignmentResult objects present in the
-    BlastAlignment objects.
-    """
-    # Iterate over list of BlastnAlignment objects
-    for alignment in alignments:
-        # Find the amount to add to shift the alignments the the right.
-        delta_query = size_longest_sequence - alignment.query_len
-        delta_hit = size_longest_sequence - alignment.hit_len
-        # Iterate over RegionAlignmentResults objects to modify the plotting positions.
-        for region in alignment.regions:
-            region.query_from_plot = region.query_from_plot + delta_query
-            region.query_to_plot = region.query_to_plot + delta_query
-            region.hit_from_plot = region.hit_from_plot + delta_hit
-            region.hit_to_plot = region.hit_to_plot + delta_hit
-
-
-def adjust_positions_sequences_center(
-    gb_records: list[GenBankRecord], size_longest_sequence: int
-) -> None:
-    """Adjust position of sequences to the center including the CDSs.
-
-    This function modifies the start_plot and end_plot attributes of the CodingSequence
-    objects present in the GenBankRecord objects.
-    """
-    # Iterate over list of GenBankRecord objects
-    for record in gb_records:
-        # Find the ammount to add to move the positions to the right
-        shift = (size_longest_sequence - record.length) / 2
-        # Modify the position for ploting the sequence
-        record.sequence_start = record.sequence_start + shift
-        record.sequence_end = record.sequence_end + shift
-        # Iterate over cds, which is a list of CodingSequence objects, to modify
-        # start_plot and end_plot
-        for coding_sequence in record.cds:
-            coding_sequence.start_plot = coding_sequence.start_plot + shift
-            coding_sequence.end_plot = coding_sequence.end_plot + shift
-
-
-def adjust_positions_alignments_center(
-    alignments: list[BlastnAlignment], size_longest_sequence: int
-) -> None:
-    """Adjust position of alignmets to the center.
-
-    This function modifies the query_from_plot, query_to_plot, hit_from_plot, and
-    hit_to_plot attributes of the RegionAlignmentResult objects present in the
-    BlastAlignment objects.
-    """
-    # Iterate over list of BlastnAlignment objects
-    for alignment in alignments:
-        # Find the amount to add to shift the alignments the the center.
-        shift_q = (size_longest_sequence - alignment.query_len) / 2
-        shift_h = (size_longest_sequence - alignment.hit_len) / 2
-        # Iterate over RegionAlignmentResults objects to modify the plotting positions.
-        for region in alignment.regions:
-            region.query_from_plot = region.query_from_plot + shift_q
-            region.query_to_plot = region.query_to_plot + shift_q
-            region.hit_from_plot = region.hit_from_plot + shift_h
-            region.hit_to_plot = region.hit_to_plot + shift_h
-
-
-# = FUNCTIONS FOR PLOTTING ==============================================================
+# TODO: I have to check how to store the data of bezier lines in a dataframe.
+# ====================================================================================== #
+#                             FUNCTIONS FOR PLOTTING                                     #
+# ====================================================================================== #
 def create_color_line(colors) -> Figure:
     """Create a continues color line based on selected color scale.
 
@@ -348,20 +237,20 @@ def plot_line(
     )
 
 
-def plot_dna_sequences(
+def plot_dna_sequences_with_dataframe(
     fig: Figure,
-    gb_records: list[GenBankRecord],
+    gb_records: DataFrame,
     longest_sequence: int,
     y_separation: int = 10,
 ) -> Figure:
     """Plot DNA sequences"""
     y_distance = len(gb_records) * y_separation
-    for gb_record in gb_records:
-        x1 = gb_record.sequence_start
-        x2 = gb_record.sequence_end
-        accession = gb_record.accession
-        record_name = gb_record.name
-        file_name = gb_record.file_name
+    for _, row in gb_records.iterrows():
+        x1 = row["sequence_start"]
+        x2 = row["sequence_end"]
+        accession = row["accession"]
+        record_name = row["record_name"]
+        file_name = row["file_name"]
         x_values = np.array([x1, x2])
         y_values = np.array([y_distance, y_distance])
         trace_name = f"Sequence: {record_name}"
@@ -384,35 +273,40 @@ def plot_dna_sequences(
     return fig
 
 
-def plot_genes(
+def plot_genes_with_dataframe(
     fig: Figure,
-    gb_records: list[GenBankRecord],
+    gb_records: DataFrame,
+    cds_records: DataFrame,
     name_from: str = "product",
     y_separation: int = 10,
 ) -> Figure:
-    """Plot arrows representing genes.
+    """Plot arrows representing genes using metadata stored in a pandas DataFrame.
 
     The customdata has information for annotating the plot dinamically in Dash.
     """
-    # Number of gb_records
+    # Number of gb_records (rows)
     number_gb_records = len(gb_records)
     # Position of the first DNA sequence in the y axis. Plotting starts at the top.
     y = number_gb_records * y_separation
     # Find longest sequence
-    longest_sequence = get_longest_sequence(gb_records)
+    longest_sequence = genbank.get_longest_sequence_dataframe(gb_records)
     # Ratio head_height vs lenght of longest sequence
     ratio = 0.02
     head_height = longest_sequence * ratio
-    # Iterate over GenBankRecords to plot genes.
-    for i, record in enumerate(gb_records):
-        for cds in record.cds:
-            x1 = cds.start_plot
-            x2 = cds.end_plot
-            color = cds.color
+    # cds_records_groups = cds_records.groupby(["file_number"])
+    # Iterate over gb_records dataframe to plot genes.
+    for i, cds_group in cds_records.groupby(["file_number"]):
+        for _, row in cds_group.iterrows():
+            file_numer = row["file_number"]
+            cds_number = row["cds_number"]
+            plot_id = f"{file_numer}.{cds_number}"
+            x1 = row["start_plot"]
+            x2 = row["end_plot"]
+            color = row["color"]
             arrow = Arrow(x1=x1, x2=x2, y=y, head_height=head_height)
             x_values, y_values = arrow.get_coordinates()
             # Get name and check if is None
-            name = cds.product if name_from == "product" else cds.gene
+            name = row["product"] if name_from == "product" else row["gene"]
             name = name if name is not None else "no name"
             plot_polygon(
                 fig,
@@ -423,13 +317,14 @@ def plot_genes(
                 customdata=[
                     {
                         "type": "gene_info",
-                        "gb_record_number": i,
+                        "gb_record_number": i[0],
                         "number_gb_records": number_gb_records,
-                        "x_start": cds.start,
-                        "x_end": cds.end,
-                        "x_start_plot": cds.start_plot,
-                        "x_end_plot": cds.end_plot,
+                        "x_start": row["start"],
+                        "x_end": row["end"],
+                        "x_start_plot": row["start_plot"],
+                        "x_end_plot": row["end_plot"],
                         "y": y,
+                        "plot_id": plot_id,
                     }
                 ],
             )
@@ -437,9 +332,10 @@ def plot_genes(
     return fig
 
 
-def plot_homology_regions(
+def plot_homology_regions_with_dataframe(
     fig: Figure,
-    alignments: list[BlastnAlignment],
+    alignments_df: DataFrame,
+    regions_df: DataFrame,
     y_separation: int = 10,
     homology_padding: float = 1.1,
     colorscale: str = "Greys",
@@ -449,21 +345,18 @@ def plot_homology_regions(
     lowest_homology: None | float = None,
     highest_homology: None | float = None,
 ) -> Figure:
-    """Plot homology regions of aligned sequences
-
-    The customdata has information to change the colors dinamically in Dash
-    """
+    # Get length of alignments and add 1
+    alignments_len = len(alignments_df) + 1
     # Get the y distance to start plotting at the top of the graph
-    y_distances = (len(alignments) + 1) * y_separation
-    # Iterate over alignmets
-    for alignment in alignments:
-        # On each alignment iterate over the homologous regions for plotting
-        for region in alignment.regions:
+    y_distances = (alignments_len) * y_separation
+    # Iterate over homologous regions for plotting
+    for i, region_group in regions_df.groupby(["alignment_number"]):
+        for _, row in region_group.iterrows():
             # Get region coordinates
-            x1 = region.query_from_plot
-            x2 = region.query_to_plot
-            x3 = region.hit_to_plot
-            x4 = region.hit_from_plot
+            x1 = row["query_from_plot"]
+            x2 = row["query_to_plot"]
+            x3 = row["hit_to_plot"]
+            x4 = row["hit_from_plot"]
             y1 = y_distances - homology_padding
             y2 = y_distances - homology_padding
             y3 = y_distances - y_separation + homology_padding
@@ -484,7 +377,7 @@ def plot_homology_regions(
                     proportions=[0, 0.2, 0.8, 1],
                 ).coordinates_rectangle_height_bezier()
             # Get the identity to match with the correct color.
-            homology = region.homology
+            homology = row["homology"]
             # Sample color depending on how the user set the colorscale
             if set_colorscale_to_extreme_homologies:
                 color = sample_colorscale_setting_lowest_and_highest_homologies(
@@ -772,51 +665,57 @@ def toggle_scale_bar(figure: Figure, show: bool) -> Figure:
     return figure
 
 
-def make_alignments(plot_parameters: dict) -> tuple[BlastnAlignment, GenBankRecord]:
+def make_alignments(
+    input_files: list[Path], output_folder: Path
+) -> tuple[DataFrame, DataFrame, DataFrame, DataFrame]:
     """BLAST nucleotide sequences to make alignments."""
-    # Convert paths of input_files and ouput_folder into Path objects
-    input_files = [Path(input_file) for input_file in plot_parameters["input_files"]]
-    output_folder = Path(plot_parameters["output_folder"])
     # Create fasta files for BLASTing using the gb files
     faa_files = genbank.make_fasta_files(input_files, output_folder)
     # Run blastn locally to make alignments.
     blast_xml_results = genbank.run_blastn(faa_files, output_folder)
-    # Delete the fasta files used for BLASTing.
+    # Make alignments and regions dataframes from blast results
+    alignments_df, regions_df = genbank.blast_alignments_to_dataframe(blast_xml_results)
+    # Make GenBank records and coding sequences dataframes
+    gb_df, cds_df = genbank.genbank_files_metadata_to_dataframes(input_files)
+    # Delete the documents used for genereting BLASTn results.
     misc.delete_files(faa_files)
-    # Make a list of dict representing `BlastnAlignment` classes from the xml blatn
-    # results.
-    alignments = genbank.get_alignment_records(blast_xml_results)
-    # Delete the xml documents.
     misc.delete_files(blast_xml_results)
-    # Make a list of `GenBankRecord` classes using the gb files.
-    gb_records = genbank.get_gb_records(input_files)
-    return alignments, gb_records
+    return gb_df, cds_df, alignments_df, regions_df
 
 
 # ====================================================================================== #
 #                                  MAIN FUNCTION GUI                                     #
 # ====================================================================================== #
-def make_figure(plot_parameters: dict) -> tuple[Figure, float, float]:
+def make_figure(plot_parameters: PlotParameters) -> Figure:
     """Make a multiple sequence alignment plot
 
     Return
     ------
     Figure : plotly.graph_objects.Figure
-    lowest_identity : float
-    highest_identity : float
     """
-    # = Get alignments and gb_records ===================================================
-    alignments, gb_records = make_alignments(plot_parameters)
-
     # Before plotting, we must check the alignments position option to adjust the
     # coordinates of the sequences and genes.
-    longest_sequence = get_longest_sequence(gb_records)
-    if plot_parameters["alignments_position"] == "right":
-        adjust_positions_alignments_right(alignments, longest_sequence)
-        adjust_positions_sequences_right(gb_records, longest_sequence)
-    if plot_parameters["alignments_position"] == "center":
-        adjust_positions_alignments_center(alignments, longest_sequence)
-        adjust_positions_sequences_center(gb_records, longest_sequence)
+    if (
+        plot_parameters.draw_from_button == "draw-button"
+        and plot_parameters.alignments_position != "left"
+    ):
+        genbank.adjust_positions_sequences_and_alignments_df_for_plotting(
+            gb_records=plot_parameters.gb_df,
+            cds=plot_parameters.cds_df,
+            alignments=plot_parameters.alignments_df,
+            regions=plot_parameters.alignments_regions_df,
+            size_longest_sequence=plot_parameters.longest_sequence,
+            position=plot_parameters.alignments_position,
+        )
+    else:
+        genbank.adjust_positions_sequences_and_alignments_df_for_plotting(
+            gb_records=plot_parameters.gb_df,
+            cds=plot_parameters.cds_df,
+            alignments=plot_parameters.alignments_df,
+            regions=plot_parameters.alignments_regions_df,
+            size_longest_sequence=plot_parameters.longest_sequence,
+            position=plot_parameters.alignments_position,
+        )
 
     # = PLOT ALIGNMENTS =================================================================
     # Create a blank figure
@@ -838,52 +737,71 @@ def make_figure(plot_parameters: dict) -> tuple[Figure, float, float]:
         hovermode="closest",
     )
 
-    # Find lowest and highest homologies
-    lowest_identity, highest_identity = find_lowest_and_highest_homology(alignments)
-    set_colorscale_to_extreme_homologies = plot_parameters[
-        "set_colorscale_to_extreme_homologies"
-    ]
+    lowest_identity, highest_identity = (
+        genbank.find_lowest_and_highest_homology_dataframe(
+            plot_parameters.alignments_regions_df
+        )
+    )
+    # Add lowest and highest identities to plot_parameters
+    plot_parameters.lowest_identity = lowest_identity
+    plot_parameters.highest_identity = highest_identity
+    # Check if user set the colorscale to extreme homologies
+    set_colorscale_to_extreme_homologies = (
+        plot_parameters.set_colorscale_to_extreme_homologies
+    )
 
     # Select colormap and its range to plot the homology regions
     colorscale = get_truncated_colorscale(
-        colorscale_name=plot_parameters["identity_color"],
-        vmin=plot_parameters["colorscale_vmin"],
-        vmax=plot_parameters["colorscale_vmax"],
+        colorscale_name=plot_parameters.identity_color,
+        vmin=plot_parameters.colorscale_vmin,
+        vmax=plot_parameters.colorscale_vmax,
     )
 
     # Plot the DNA sequences
-    fig = plot_dna_sequences(fig, gb_records, longest_sequence)
+    fig = plot_dna_sequences_with_dataframe(
+        fig,
+        plot_parameters.gb_df,
+        plot_parameters.longest_sequence,
+    )
     # Plot the homology regions
     straight_homology_regions = (
-        True if plot_parameters["straight_homology_regions"] == "straight" else False
+        True if plot_parameters.straight_homology_regions == "straight" else False
     )
-    fig = plot_homology_regions(
+
+    fig = plot_homology_regions_with_dataframe(
         fig,
-        alignments,
+        alignments_df=plot_parameters.alignments_df,
+        regions_df=plot_parameters.alignments_regions_df,
         colorscale=colorscale,
         straight_heights=straight_homology_regions,
-        minimum_homology_length=plot_parameters["minimum_homology_length"],
+        minimum_homology_length=plot_parameters.minimum_homology_length,
         set_colorscale_to_extreme_homologies=set_colorscale_to_extreme_homologies,
         lowest_homology=lowest_identity,
         highest_homology=highest_identity,
     )
-    # Plot the genes
-    fig = plot_genes(fig, gb_records, name_from=plot_parameters["annotate_genes_with"])
+
+    fig = plot_genes_with_dataframe(
+        fig=fig,
+        gb_records=plot_parameters.gb_df,
+        cds_records=plot_parameters.cds_df,
+    )
     # Annotate genes
-    if plot_parameters["annotate_genes"] == "top":
+    if plot_parameters.annotate_genes == "top":
         fig = annotate_genes_top_using_trace_customdata(fig)
-    if plot_parameters["annotate_genes"] == "bottom":
+    if plot_parameters.annotate_genes == "bottom":
         fig = annotate_genes_bottom_using_trace_customdata(fig)
-    if plot_parameters["annotate_genes"] == "top-bottom":
+    if plot_parameters.annotate_genes == "top-bottom":
         fig = annotate_genes_top_using_trace_customdata(fig)
         fig = annotate_genes_bottom_using_trace_customdata(fig)
     # Annotate DNA sequences
-    if (sequence_name := plot_parameters["annotate_sequences"]) != "no":
+    if (sequence_name := plot_parameters.annotate_sequences) != "no":
         # fig = annotate_dna_sequences(fig, gb_records, longest_sequence, sequence_name)
         fig = annotate_dna_sequences_using_trace_customdata(fig, sequence_name)
 
     # Plot DNA scale
-    fig = plot_scale(fig, longest_sequence, plot_parameters["add_scale_bar"])
+    fig = plot_scale(
+        fig, plot_parameters.longest_sequence, plot_parameters.add_scale_bar
+    )
 
     # Plot colorscale legend
     fig = plot_colorbar_legend(
@@ -894,4 +812,4 @@ def make_figure(plot_parameters: dict) -> tuple[Figure, float, float]:
         set_colorscale_to_extreme_homologies=set_colorscale_to_extreme_homologies,
     )
 
-    return fig, lowest_identity, highest_identity
+    return fig

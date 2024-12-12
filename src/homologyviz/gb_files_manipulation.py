@@ -9,284 +9,13 @@ Copyright (c) 2024, Ivan Munoz Gutierrez
 
 from pathlib import Path
 import subprocess
+import pandas as pd
+from pandas import DataFrame
 
 from Bio import SeqIO
 from Bio.Blast import NCBIXML
 from Bio.SeqRecord import SeqRecord
-
-
-class CodingSequence:
-    """Store Coding Sequence (CDS) information from a GenBank file.
-
-    This is a simple class designed to store metadata from the CDS of a GenBank file for
-    downstream applications such as visualization or analysis. It stores attributes like
-    gene, product, location of the cds (start and end), direction of cds (strand), and
-    color of cds. The start_plot and end_plot attributes are used for ploting and they
-    are modified if the sequences in the plot are aligned to the center or the right.
-
-    Attributes
-    ----------
-    gene : str
-    product : str
-    start : int
-    end : int
-    strans : int
-    color : str
-    start_plot : int
-    end_plot : int
-    """
-
-    def __init__(
-        self,
-        gene: str,
-        product: str,
-        start: str | int,
-        end: str | int,
-        strand: str | int,
-        color: str,
-        start_plot: int,
-        end_plot: int,
-    ) -> None:
-        """Initialize CodingSequence to sotre information from GenBank file."""
-        self.gene = gene
-        self.product = product
-        self.start = int(start)
-        self.end = int(end)
-        self.strand = int(strand)
-        self.color = color
-        self.start_plot = start_plot
-        self.end_plot = end_plot
-
-
-class GenBankRecord:
-    """Store and manage relevant info extracted from a GenBank file.
-
-    This class is designed to parse and store metadata and features of a GenBank file for
-    downstream applications such as visualization or analysis. It extracts attributes like
-    the sequence name, description, coding sequences, and sequence length, providing a
-    structured representation of the data.
-
-    Attributes
-    ----------
-    file_name : str
-        GenBank file name.
-    file_path : Path
-        Path to the GenBank file.
-    name : str
-        Sequence name shown next to the `LOCUS` tag in the GenBank file.
-    accession : str
-        Sequence accession number with version.
-    description : str
-        Description shown next to the `DEFINITION` tag in the GenBank file.
-    length : int
-        Sequence length.
-    sequence_start : int
-        Start coordinate used for plotting. Default value is zero but changes
-        if the alignments in the plot are set to center or right.
-    sequence_end : int
-        End coordinate used for plotting. Default value is `length` but changes if
-        the alignments in the plot are set to center or right.
-    cds : list[ CodingSequence ]
-        List of `CodingSequence` objects containing information about coding
-        sequences (CDS tags) in the GenBank file. Each object includes details
-        such as product name, start and end coordinates, strand orientation,
-        and assigned color for visualization.
-    num_cds : int
-        Number of CDSs parsed from the GenBank file.
-    """
-
-    def __init__(self, file_path: Path) -> None:
-        """Initialize a GenBankRecord to store relevant information from a GenBank file
-
-        Parameters
-        ----------
-        file_name : Path object
-            Path to file the GenBank file.
-        """
-        # Read the file into a temporary variable
-        record = SeqIO.read(file_path, "genbank")
-
-        # Extract the needed information
-        self.file_path = file_path
-        self.file_name = file_path.stem
-        self.name = record.name
-        self.accession = record.id
-        self.description = record.description
-        self.length = len(record)
-        self.sequence_start = 0
-        self.sequence_end = self.length
-        self.cds = self._parse_genbank(record)
-        self.num_cds = len(self.cds)
-
-    def _parse_genbank(self, record) -> list[CodingSequence]:
-        """Parse GenBank file and make a list of `CodingSequence` classes.
-
-        Parameters
-        ----------
-        record : Bio SeqIO.read object.
-
-        Returns
-        -------
-        coding_sequences : list
-            List of `CodingSequence` classes holding CDSs' information.
-        """
-        coding_sequences = []
-        for feature in record.features:
-            if feature.type != "CDS":
-                continue
-            if gene := feature.qualifiers.get("gene", None):
-                gene = gene[0]
-            if product := feature.qualifiers.get("product", None):
-                product = product[0]
-            if color := feature.qualifiers.get("Color", None):
-                color = feature.qualifiers["Color"][0]
-            else:
-                color = "#ffff00"  # Make yellow default color
-            # Some CDS are composed of more than one parts, like introns, or,
-            # in the case of some bacteria, some genes have frameshifts as a
-            # regulatory function (some transposase genes have frameshifts as
-            # a regulatory function).
-            for part in feature.location.parts:
-                strand = part._strand
-                if strand == -1:
-                    start = part._end
-                    end = part._start + 1
-                else:
-                    start = part._start + 1
-                    end = part._end
-                # Append cds.
-                coding_sequences.append(
-                    CodingSequence(
-                        gene=gene,
-                        product=product,
-                        start=start,
-                        end=end,
-                        strand=strand,
-                        color=color,
-                        start_plot=start,
-                        end_plot=end,
-                    )
-                )
-        return coding_sequences
-
-
-class RegionAlignmentResult:
-    """Store a BLASTn result of a region that aligned.
-
-    This is a simple class designed to store metadata from the a BLASTn result. It stores
-    attributes like query from and to, hit from and to, identity, homology, and alignment
-    length.
-
-    Attributes
-    ----------
-    query_from : int
-    query_to : int
-    query_from_plot : int
-    query_to_plot : int
-    hit_from : int
-    hit_to : int
-    hit_from_plot : int
-    hit_to_plot : int
-    identity: int
-    positive: int
-    align_len: int
-    homology: float
-    """
-
-    def __init__(
-        self,
-        query_from: int,
-        query_to: int,
-        query_from_plot: int,
-        query_to_plot: int,
-        hit_from: int,
-        hit_to: int,
-        hit_from_plot: int,
-        hit_to_plot: int,
-        identity: int,
-        positive: int,
-        align_len: int,
-    ) -> None:
-        """Initialize RegionAlignmentResult to store information from a BLASTn alignment."""
-        self.query_from = query_from
-        self.query_to = query_to
-        self.query_from_plot = query_from_plot
-        self.query_to_plot = query_to_plot
-        self.hit_from = hit_from
-        self.hit_to = hit_to
-        self.hit_from_plot = hit_from_plot
-        self.hit_to_plot = hit_to_plot
-        self.identity = identity
-        self.positive = positive
-        self.align_len = align_len
-        self.homology = identity / align_len
-
-
-class BlastnAlignment:
-    """Store blastn alignment results.
-
-    Attributes
-    ----------
-    query_name : str
-        Name of query sequence.
-    hit_name : str
-        Name of subject sequence.
-    query_len : int
-        Length of query sequence.
-    hit_len : int
-        Length of subject sequence.
-    regions : list
-        List of `RegionAlignmentResult` classes with info of aligned region as
-        query_from, query_to, hit_from, hit_to, and identity.
-    """
-
-    def __init__(self, xml_alignment_result: Path):
-        """Initialize BlastnAlignment class
-
-        Parameters
-        ----------
-        xml_alignment_result : Path
-            Path to the xml file that has the alignment information.
-        """
-        with open(xml_alignment_result, "r") as result_handle:
-            blast_record = NCBIXML.read(result_handle)
-            self.query_name = blast_record.query
-            self.hit_name = blast_record.alignments[0].hit_def
-            self.query_len = int(blast_record.query_length)
-            self.hit_len = int(blast_record.alignments[0].length)
-            self.regions = self._parse_blast_regions(blast_record)
-
-    def _parse_blast_regions(self, blast_record) -> list[RegionAlignmentResult]:
-        """Parse blastn aligned regions to store the information.
-
-        Parameters
-        ----------
-        blast_record : NCBIXML object
-            Harbors blastn alignment results in xml format.
-
-        Returns
-        -------
-        regions : list
-            List of `RegionAlignmentResult` classes with info from alignment.
-        """
-        regions = []
-        for region in blast_record.alignments[0].hsps:
-            regions.append(
-                RegionAlignmentResult(
-                    query_from=int(region.query_start),
-                    query_to=int(region.query_end),
-                    query_from_plot=int(region.query_start),
-                    query_to_plot=int(region.query_end),
-                    hit_from=int(region.sbjct_start),
-                    hit_to=int(region.sbjct_end),
-                    hit_from_plot=int(region.sbjct_start),
-                    hit_to_plot=int(region.sbjct_end),
-                    identity=int(region.identities),
-                    positive=int(region.positives),
-                    align_len=int(region.align_length),
-                )
-            )
-        return regions
+from Bio.Blast import Record
 
 
 def make_fasta_files(gb_files: list[Path], output_path: Path) -> list[Path]:
@@ -386,23 +115,497 @@ def blastn_command_line(query: Path, subject: Path, out: Path, outfmt: int = 5) 
         return e.stderr
 
 
-def get_alignment_records(alignment_files: list[Path]) -> list:
-    """Parse xml alignment files and make list of `BlastnAlignment` classes."""
-    alignments = [BlastnAlignment(alignment) for alignment in alignment_files]
-    return alignments
+def genbank_files_metadata_to_dataframes(
+    gb_files: list[Path],
+) -> tuple[DataFrame, DataFrame]:
+    """Compile GenBank files metadata into Pandas DataFrames.
+
+    This function is designed to parse and store metadata and features of GenBank files
+    for downstream applications such as visualization or analysis. It extracts attributes
+    like the sequence name, coding sequences, and sequence length, providing a structured
+    representation of the data using Pandas DataFrames.
+
+    Returns
+    -------
+    gb_df : pandas.DataFrame
+        DataFrame storing GenBank record data such as file path, file name, and sequence
+        length. The DataFrame includes a file number and an acession number colum to make
+        a relational database with the cds_df
+    cds_df : pandas.DataFrame
+        DataFrame storing the coding sequences information from each GenBank file. The
+        DataFrame includes a file number and an acession number colum to make a relational
+        database with the gb_df.
+    """
+    # headers gb_files_df
+    headers_gb_files_df = [
+        "file_number",
+        "file_path",
+        "file_name",
+        "record_name",
+        "accession",
+        "length",
+        "sequence_start",
+        "sequence_end",
+    ]
+    # Initiate dictionary to stroe data
+    gb_files_data = dict(
+        file_number=[],
+        file_path=[],
+        file_name=[],
+        record_name=[],
+        accession=[],
+        length=[],
+        sequence_start=[],
+        sequence_end=[],
+    )
+    # Initiate a list of cds DataFrames
+    cds_dataframes = []
+    # Iterate over GenBank files
+    for i, gb_file in enumerate(gb_files):
+        # fill data related to the file
+        gb_files_data["file_number"].append(i)
+        gb_files_data["file_path"].append(gb_file)
+        gb_files_data["file_name"].append(gb_file.stem)
+        # Read the file into a temporary variable
+        record = SeqIO.read(gb_file, "genbank")
+        # fill data related to the GenBank record
+        gb_files_data["record_name"].append(record.name)
+        gb_files_data["accession"].append(record.id)
+        seq_length = len(record)
+        gb_files_data["length"].append(float(seq_length))
+        gb_files_data["sequence_start"].append(0.0)
+        gb_files_data["sequence_end"].append(float(seq_length))
+
+        # Get a DataFrame from the cds
+        cds_dataframes.append(
+            parse_genbank_cds_to_df(record=record, file_number=i, accession=record.id)
+        )
+    # Create the GenBank files DataFrame
+    gb_df = DataFrame(gb_files_data, columns=headers_gb_files_df)
+    # Concatenate the cds_dataframes list into a single DataFrame
+    cds_df = pd.concat(cds_dataframes, ignore_index=True)
+
+    return gb_df, cds_df
 
 
-def get_gb_records(gb_files: list[Path]) -> list:
-    """Parse gb files and make list of `GenBankRecord` classes."""
-    gb_records = [GenBankRecord(gb_file) for gb_file in gb_files]
-    return gb_records
+def parse_genbank_cds_to_df(
+    record: SeqRecord, file_number: int, accession: str
+) -> DataFrame:
+    """Parse a Bio.SeqRecord from a GenBank file and make a Pandas DataFrame.
+
+    Parameters
+    ----------
+    record : Bio.SeqRecord object
+
+    Returns
+    -------
+    DataFrame
+        DataFrame holding CDSs' information.
+    """
+    # DataFrame headers
+    headers = [
+        "file_number",
+        "cds_number",
+        "accession",
+        "gene",
+        "product",
+        "start",
+        "end",
+        "strand",
+        "color",
+        "start_plot",
+        "end_plot",
+    ]
+    # Initiate dictionary to store data
+    data = dict(
+        file_number=[],
+        cds_number=[],
+        accession=[],
+        gene=[],
+        product=[],
+        start=[],
+        end=[],
+        strand=[],
+        color=[],
+        start_plot=[],
+        end_plot=[],
+    )
+    # Initialize counter to track cds; enumerate will not give continues numbers.
+    counter = 0
+    # Iterate over features to extract data. Make sure that if there is no metadata,
+    # then add None.
+    for feature in record.features:
+        if feature.type != "CDS":
+            continue
+        data["file_number"].append(file_number)
+        data["cds_number"].append(counter)
+        counter += 1
+        data["accession"].append(accession)
+        if gene := feature.qualifiers.get("gene", None):
+            data["gene"].append(gene[0])
+        else:
+            data["gene"].append(None)
+        if product := feature.qualifiers.get("product", None):
+            data["product"].append(product[0])
+        else:
+            data["product"].append(None)
+        if feature.qualifiers.get("Color", None):
+            data["color"].append(feature.qualifiers["Color"][0])
+        else:
+            data["color"].append("#ffff00")  # Make yellow default color
+        # Some CDS are composed of more than one parts, like introns, or,
+        # in the case of some bacteria, some genes have frameshifts as a
+        # regulatory function (some transposase genes have frameshifts as
+        # a regulatory function).
+        for part in feature.location.parts:
+            strand = part._strand
+            data["strand"].append(strand)
+            if strand == -1:
+                data["start"].append(float(part._end))
+                data["start_plot"].append(float(part._end))
+                data["end"].append(float(part._start + 1))
+                data["end_plot"].append(float(part._start + 1))
+            else:
+                data["start"].append(float(part._start + 1))
+                data["start_plot"].append(float(part._start + 1))
+                data["end"].append(float(part._end))
+                data["end_plot"].append(float(part._end))
+    # Create DataFrame
+    df = DataFrame(data, columns=headers)
+    return df
 
 
-def convert_gb_records_to_df():
-    """"""
-    pass
+def blast_alignments_to_dataframe(
+    xml_alignment_result: list[Path],
+) -> list[DataFrame, DataFrame]:
+    """Store a BLASTn alignments results into Pandas DataFrames"""
+    headers = ["alignment_number", "query_name", "hit_name", "query_len", "hit_len"]
+    data = dict(
+        alignment_number=[],
+        query_name=[],
+        hit_name=[],
+        query_len=[],
+        hit_len=[],
+    )
+    regions = []
+    # Iterate over xml files containing alignment results
+    for i, xml_file in enumerate(xml_alignment_result):
+        with open(xml_file, "r") as result_handle:
+            blast_record = NCBIXML.read(result_handle)
+            # Add alignment number for a relational database
+            data["alignment_number"].append(i)
+            # Get metadata
+            data["query_name"].append(blast_record.query)
+            data["hit_name"].append(blast_record.alignments[0].hit_def)
+            data["query_len"].append(int(blast_record.query_length))
+            data["hit_len"].append(int(blast_record.alignments[0].length))
+            regions.append(
+                parse_blast_record(blast_record=blast_record, alignment_number=i)
+            )
+    # Create DataFrame
+    alignments_df = DataFrame(data, columns=headers)
+    regions_df = pd.concat(regions, ignore_index=True)
+    return alignments_df, regions_df
+
+
+def parse_blast_record(blast_record: Record, alignment_number: int) -> DataFrame:
+    headers = [
+        "alignment_number",
+        "query_from",
+        "query_to",
+        "query_from_plot",
+        "query_to_plot",
+        "hit_from",
+        "hit_to",
+        "hit_from_plot",
+        "hit_to_plot",
+        "identity",
+        "positive",
+        "align_len",
+        "homology",
+    ]
+    data = dict(
+        alignment_number=[],
+        query_from=[],
+        query_to=[],
+        query_from_plot=[],
+        query_to_plot=[],
+        hit_from=[],
+        hit_to=[],
+        hit_from_plot=[],
+        hit_to_plot=[],
+        identity=[],
+        positive=[],
+        align_len=[],
+        homology=[],
+    )
+    for region in blast_record.alignments[0].hsps:
+        data["alignment_number"].append(alignment_number)
+        data["query_from"].append(float(region.query_start))
+        data["query_to"].append(float(region.query_end))
+        data["query_from_plot"].append(float(region.query_start))
+        data["query_to_plot"].append(float(region.query_end))
+        data["hit_from"].append(float(region.sbjct_start))
+        data["hit_to"].append(float(region.sbjct_end))
+        data["hit_from_plot"].append(float(region.sbjct_start))
+        data["hit_to_plot"].append(float(region.sbjct_end))
+        data["identity"].append(int(region.identities))
+        data["positive"].append(int(region.positives))
+        data["align_len"].append(int(region.align_length))
+        homology = int(region.identities) / int(region.align_length)
+        data["homology"].append(homology)
+    regions_df = pd.DataFrame(data, columns=headers)
+    return regions_df
+
+
+class PlotParameters:
+    """Store alignments information for plotting in Dash."""
+
+    def __init__(
+        self,
+        input_files: None | list[Path] = None,
+        output_folder: None | Path = None,
+        alignments_position: None | str = None,
+        identity_color: None | str = None,
+        colorscale_vmin: None | float = None,
+        colorscale_vmax: None | float = None,
+        set_colorscale_to_extreme_homologies: None | bool = None,
+        annotate_sequences: None | str = None,
+        annotate_genes: None | str = None,
+        annotate_genes_with: None | str = None,
+        straight_homology_regions: None | bool = None,
+        minimum_homology_length: None | int = None,
+        add_scale_bar: None | str = None,
+        selected_traces: None | list = None,
+        lowest_identity: None | float = None,
+        highest_identity: None | float = None,
+        longest_sequence: None | int = None,
+        gb_df: None | DataFrame = None,
+        cds_df: None | DataFrame = None,
+        alignments_df: None | DataFrame = None,
+        alignments_regions_df: None | DataFrame = None,
+        draw_from_button: None | str = None,
+    ):
+        self.input_files = input_files
+        self.output_folder = output_folder
+        self.alignments_position = alignments_position
+        self.identity_color = identity_color
+        self.colorscale_vmin = colorscale_vmin
+        self.colorscale_vmax = colorscale_vmax
+        self.set_colorscale_to_extreme_homologies = set_colorscale_to_extreme_homologies
+        self.annotate_sequences = annotate_sequences
+        self.annotate_genes = annotate_genes
+        self.annotate_genes_with = annotate_genes_with
+        self.straight_homology_regions = straight_homology_regions
+        self.minimum_homology_length = minimum_homology_length
+        self.add_scale_bar = add_scale_bar
+        self.selected_traces = selected_traces
+        self.lowest_identity = lowest_identity
+        self.highest_identity = highest_identity
+        self.longest_sequence = longest_sequence
+        self.gb_df = gb_df
+        self.cds_df = cds_df
+        self.alignments_df = alignments_df
+        self.alignments_regions_df = alignments_regions_df
+        self.draw_from_button = draw_from_button
+
+    def reset(self):
+        """Reset all attributes to their default values."""
+        self.__init__()
+
+
+def get_longest_sequence_dataframe(gb_records: DataFrame) -> int:
+    """Finde the longest sequence in the GenBank metadata DataFrame."""
+    longest = gb_records["length"].max()
+    return longest
+
+
+def find_lowest_and_highest_homology_dataframe(regions_df: DataFrame) -> tuple:
+    lowest = regions_df["homology"].min()
+    highest = regions_df["homology"].max()
+    return lowest, highest
+
+
+def adjust_positions_sequences_df_left(gb_records: DataFrame, cds: DataFrame) -> None:
+    """Adjust the position of the sequences to the left including the CDSs.
+
+    The start_plot and end_plot columns of the cds DataFrame are used for plotting.
+    Therefore, their values are modified.
+    """
+    # Reset the values of gb_records and cds to the left
+    gb_records["sequence_start"] = 0.0
+    gb_records["sequence_end"] = gb_records["length"]
+    cds["start_plot"] = cds["start"]
+    cds["end_plot"] = cds["end"]
+
+
+def adjust_positions_sequences_df_center(
+    gb_records: DataFrame, cds: DataFrame, size_longest_sequence: int
+) -> None:
+    """Adjust position of sequences to the center including the CDSs.
+
+    The start_plot and end_plot columns of the cds DataFrame are used for plotting.
+    Therefore, this function modifies their values.
+    """
+    # Check if sequences are at the left. If not, reset the values to the left
+    if not check_if_sequences_are_at_left(cds):
+        adjust_positions_sequences_df_left(gb_records, cds)
+    # Iterate over gb_records rows to find the shift value
+    for i, row in gb_records.iterrows():
+        # Get value to shift sequences to the center
+        shift = (size_longest_sequence - row["length"]) / 2
+        # Change the values of the sequence_start and sequence_end of gb_records
+        gb_records.loc[i, "sequence_start"] = row["sequence_start"] + shift
+        gb_records.loc[i, "sequence_end"] = row["sequence_end"] + shift
+        # Change the values of start_plot and end_plot of the cds DataFrame
+        cds.loc[cds["file_number"] == i, "start_plot"] += shift
+        cds.loc[cds["file_number"] == i, "end_plot"] += shift
+
+
+def adjust_positions_sequences_df_right(
+    gb_records: DataFrame, cds: DataFrame, size_longest_sequence: int
+) -> None:
+    """Adjust position of sequences to the right including the CDSs.
+
+    The start_plot and end_plot columns of the cds DataFrame are used for plotting.
+    Therefore, their values are modified.
+    """
+    # Check if sequences are at the left. If not, reset the values to the left
+    if not check_if_sequences_are_at_left(cds):
+        adjust_positions_sequences_df_left(gb_records, cds)
+    # Iterate over gb_records rows to find the shift value
+    for i, row in gb_records.iterrows():
+        # Get value to shift sequences to the center
+        shift = size_longest_sequence - row["length"]
+        # Change the values of the sequence_start and sequence_end of gb_records
+        gb_records.loc[i, "sequence_start"] += shift
+        gb_records.loc[i, "sequence_end"] += shift
+        # Change the values of start_plot and end_plot of the cds DataFrame
+        cds.loc[cds["file_number"] == i, "start_plot"] += shift
+        cds.loc[cds["file_number"] == i, "end_plot"] += shift
+
+
+def adjust_positions_alignments_df_left(regions: DataFrame) -> None:
+    """Adjust position of alignmets to the left.
+
+    The query_from_plot, query_to_plot, hit_from_plot, and hit_to_plot columns of the
+    alignments DataFramme are used for plotting. Therefore, this function modifies their
+    values.
+    """
+    # Reset values
+    regions["query_from_plot"] = regions["query_from"]
+    regions["query_to_plot"] = regions["query_to"]
+    regions["hit_from_plot"] = regions["hit_from"]
+    regions["hit_to_plot"] = regions["hit_to"]
+
+
+def adjust_positions_alignments_df_center(
+    alignments: DataFrame, regions: DataFrame, size_longest_sequence: int
+) -> None:
+    """Adjust position of alignmets to the center.
+
+    The query_from_plot, query_to_plot, hit_from_plot, and hit_to_plot columns of the
+    alignments DataFramme are used for plotting. Therefore, this function modifies their
+    values.
+    """
+    # Check if alignments are at the left. If not, reset the values to the left
+    if not check_if_alignments_are_at_left(regions):
+        adjust_positions_alignments_df_left(regions)
+    # Iterate over alignments to find the shift value
+    for i, alignment in alignments.iterrows():
+        # Find the amount to add to shift the alignments the the center.
+        shift_q = (size_longest_sequence - alignment["query_len"]) / 2
+        shift_h = (size_longest_sequence - alignment["hit_len"]) / 2
+        # Change the values of the regions used for plotting.
+        regions.loc[regions["alignment_number"] == i, "query_from_plot"] += shift_q
+        regions.loc[regions["alignment_number"] == i, "query_to_plot"] += shift_q
+        regions.loc[regions["alignment_number"] == i, "hit_from_plot"] += shift_h
+        regions.loc[regions["alignment_number"] == i, "hit_to_plot"] += shift_h
+
+
+def adjust_positions_alignments_df_right(
+    alignments: DataFrame, regions: DataFrame, size_longest_sequence: int
+) -> None:
+    """Adjust position of the alignments to the right.
+
+    The query_from_plot, query_to_plot, hit_from_plot, and hit_to_plot columns of the
+    alignments DataFramme are used for plotting. Therefore, this function modifies their
+    values.
+    """
+    # Check if alignments are at the left. If not, reset the values to the left
+    if not check_if_alignments_are_at_left(regions):
+        adjust_positions_alignments_df_left(regions)
+    # Iterate over alignments to find the shift value
+    for i, alignment in alignments.iterrows():
+        # Find the amount to add to shift the alignments the the right.
+        delta_query = size_longest_sequence - alignment["query_len"]
+        delta_hit = size_longest_sequence - alignment["hit_len"]
+        # Change the values fo the regions used for plotting.
+        regions.loc[regions["alignment_number"] == i, "query_from_plot"] += delta_query
+        regions.loc[regions["alignment_number"] == i, "query_to_plot"] += delta_query
+        regions.loc[regions["alignment_number"] == i, "hit_from_plot"] += delta_hit
+        regions.loc[regions["alignment_number"] == i, "hit_to_plot"] += delta_hit
+
+
+def adjust_positions_sequences_and_alignments_df_for_plotting(
+    gb_records: DataFrame,
+    cds: DataFrame,
+    alignments: DataFrame,
+    regions: DataFrame,
+    size_longest_sequence: None | int = None,
+    position: str = "left",
+) -> None:
+    if position == "left":
+        adjust_positions_sequences_df_left(gb_records=gb_records, cds=cds)
+        adjust_positions_alignments_df_left(regions=regions)
+    if position == "center":
+        adjust_positions_sequences_df_center(
+            gb_records=gb_records,
+            cds=cds,
+            size_longest_sequence=size_longest_sequence,
+        )
+        adjust_positions_alignments_df_center(
+            alignments=alignments,
+            regions=regions,
+            size_longest_sequence=size_longest_sequence,
+        )
+    if position == "right":
+        adjust_positions_sequences_df_right(
+            gb_records=gb_records,
+            cds=cds,
+            size_longest_sequence=size_longest_sequence,
+        )
+        adjust_positions_alignments_df_right(
+            alignments=alignments,
+            regions=regions,
+            size_longest_sequence=size_longest_sequence,
+        )
+
+
+def check_if_alignments_are_at_left(regions: DataFrame) -> bool:
+    left = regions["query_from_plot"].equals(regions["query_from"])
+    return left
+
+
+def check_if_sequences_are_at_left(cds: DataFrame):
+    left = cds["start_plot"].equals(cds["start"])
+    return left
 
 
 if __name__ == "__main__":
     # test
-    print("printing from gb_files_manipulation.")
+    xml1 = Path(
+        "/Users/msp/Documents/Coding/python_projects/HomologyViz/data/SW4848_paper/result0.xml"
+    )
+    xml2 = Path(
+        "/Users/msp/Documents/Coding/python_projects/HomologyViz/data/SW4848_paper/result1.xml"
+    )
+    alignments_df, regions_df = blast_alignments_to_dataframe([xml1, xml2])
+
+    print(alignments_df)
+    print(regions_df["homology"].min())
+    # cds_df_groups = cds_df.groupby(["file_number"])
+    # print(f"the length of the groups is: {len(cds_df_groups)}")
+    # for file_number, group in cds_df_groups:
+    #     print(file_number)
+    #     print(group)

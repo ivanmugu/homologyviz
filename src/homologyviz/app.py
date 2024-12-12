@@ -30,6 +30,10 @@ from plotly.graph_objects import Figure
 import plotly.express as px
 
 from homologyviz import plotter as plt
+from homologyviz.gb_files_manipulation import (
+    get_longest_sequence_dataframe,
+    PlotParameters,
+)
 from homologyviz.cli import parse_command_line_input
 
 
@@ -170,7 +174,7 @@ def make_tab_main() -> dbc.Tab:
                     "margin": "2px",
                 },
             ),
-            dbc.Row(  # ==== ALIGN AND PLOT SECTION ==================================== #
+            dbc.Row(  # ==== PLOT SECTION ============================================== #
                 [
                     dmc.Divider(
                         label=html.Span(
@@ -219,7 +223,7 @@ def make_tab_main() -> dbc.Tab:
                         ],
                         className="d-flex justify-content-evenly mt-3 mb-1",
                     ),
-                    dbc.Row(  # Genes info and align sequences
+                    dbc.Row(  # Genes info
                         [
                             dmc.Select(
                                 id="use-genes-info-from",
@@ -233,25 +237,6 @@ def make_tab_main() -> dbc.Tab:
                                 size="sm",
                                 style={"padding": "0px"},
                             ),
-                            dmc.Select(
-                                id="align-plot",
-                                label="Align Sequences",
-                                value="center",
-                                data=[
-                                    {"value": "left", "label": "Left"},
-                                    {"value": "center", "label": "Center"},
-                                    {"value": "right", "label": "Right"},
-                                ],
-                                w=130,
-                                size="sm",
-                                style={"padding": "0px"},
-                            ),
-                        ],
-                        className="d-flex justify-content-evenly my-2",
-                        style={"textAlign": "center"},
-                    ),
-                    dbc.Row(  # homology length and homology lines styles
-                        [
                             dmc.NumberInput(
                                 label="Min Homolo Length",
                                 id="minimum-homology-length",
@@ -263,22 +248,39 @@ def make_tab_main() -> dbc.Tab:
                                 size="sm",
                                 style={"padding": "0px"},
                             ),
-                            dmc.Select(
-                                id="homology-lines",
-                                label="Homology Lines",
-                                value="straight",
-                                data=[
-                                    {"value": "bezier", "label": "Bezier"},
-                                    {"value": "straight", "label": "Straight"},
-                                ],
-                                w=130,
-                                size="sm",
-                                style={"padding": "0px"},
-                            ),
                         ],
-                        className="d-flex justify-content-evenly mt-1",
+                        className="d-flex justify-content-evenly my-2",
                         style={"textAlign": "center"},
                     ),
+                    # dbc.Row(  # homology length and homology lines styles
+                    #     [
+                    #         dmc.NumberInput(
+                    #             label="Min Homolo Length",
+                    #             id="minimum-homology-length",
+                    #             value=0,
+                    #             min=0,
+                    #             step=50,
+                    #             w=130,
+                    #             suffix=" bp",
+                    #             size="sm",
+                    #             style={"padding": "0px"},
+                    #         ),
+                    #         dmc.Select(
+                    #             id="homology-lines",
+                    #             label="Homology Lines",
+                    #             value="straight",
+                    #             data=[
+                    #                 {"value": "bezier", "label": "Bezier"},
+                    #                 {"value": "straight", "label": "Straight"},
+                    #             ],
+                    #             w=130,
+                    #             size="sm",
+                    #             style={"padding": "0px"},
+                    #         ),
+                    #     ],
+                    #     className="d-flex justify-content-evenly mt-1",
+                    #     style={"textAlign": "center"},
+                    # ),
                 ],
                 className="d-flex justify-content-center mt-2",
                 style={"margin": "2px"},
@@ -415,6 +417,51 @@ def make_tab_edit() -> dbc.Tab:
         tab_id="tab-edit",
         label_style=TAB_LABEL_STYLE,
         children=[
+            dbc.Row(  # = ALIGN PLOT = #
+                [
+                    dmc.Divider(
+                        label=html.Span(
+                            [
+                                dmc.Text("Align Plot", style={"fontSize": "16px"}),
+                            ],
+                            className="d-flex align-items-center justify-content-evenly",
+                        ),
+                        labelPosition="center",
+                        className="mt-1",
+                    ),
+                    dbc.Row(
+                        [
+                            dmc.Button(
+                                "Update",
+                                id="update-align-sequences-button",
+                                disabled=True,
+                                leftSection=DashIconify(
+                                    icon="radix-icons:update",
+                                    width=25,
+                                ),
+                                color="#3a7ebf",
+                                size="sm",
+                                style={"fontSize": "12px", "width": "100px"},
+                            ),
+                            dmc.Select(
+                                id="align-plot",
+                                value="left",
+                                data=[
+                                    {"value": "left", "label": "Left"},
+                                    {"value": "center", "label": "Center"},
+                                    {"value": "right", "label": "Right"},
+                                ],
+                                w=140,
+                                size="sm",
+                                style={"padding": "0"},
+                            ),
+                        ],
+                        className="d-flex justify-content-evenly mt-2 mb-1",
+                    ),
+                ],
+                className="d-flex justify-content-center mt-3",
+                style={"margin": "2px"},
+            ),
             dbc.Row(  # = GENES COLOR SECTION = #
                 [
                     dmc.Divider(
@@ -481,7 +528,7 @@ def make_tab_edit() -> dbc.Tab:
                 className="d-flex justify-content-center my-1",
                 style={"margin": "2px"},
             ),
-            dbc.Row(  # Color input for homology regions
+            dbc.Row(  # = COLOR INPUT FOR HOMOLOGY REGIONS = #
                 [
                     dmc.Divider(
                         label=html.Span(
@@ -492,7 +539,7 @@ def make_tab_edit() -> dbc.Tab:
                             style={"display": "flex", "alignItems": "center"},
                         ),
                         labelPosition="center",
-                        className="mt-3 mb-2",
+                        className="mt-2 mb-2",
                     ),
                     dbc.Row(
                         [
@@ -722,7 +769,6 @@ def create_layout(app: Dash) -> Dash:
                                     "overflow": "auto",
                                 },
                             ),
-                            dcc.Store(id="plot-parameters", data={}),
                         ],
                         style={
                             "backgroundColor": "#242424",
@@ -777,6 +823,9 @@ def create_dash_app() -> dash.Dash:
     timeout_seconds = 5
     heartbeat_monitor_started = False
 
+    # Class to store alignments data
+    dash_parameters = PlotParameters()
+
     # App layout
     app = create_layout(app)
 
@@ -819,7 +868,6 @@ def create_dash_app() -> dash.Dash:
         [
             Output("plot", "figure"),
             Output("plot", "clickData"),
-            Output("plot-parameters", "data"),
             Output("plot-skeleton", "visible"),
         ],
         [
@@ -829,6 +877,7 @@ def create_dash_app() -> dash.Dash:
             Input("change-homology-color-button", "n_clicks"),
             Input("change-gene-color-button", "n_clicks"),
             Input("update-annotations", "n_clicks"),
+            Input("update-align-sequences-button", "n_clicks"),
         ],
         [
             State("files-table", "virtualRowData"),
@@ -839,14 +888,13 @@ def create_dash_app() -> dash.Dash:
             State("color-scale", "value"),
             State("range-slider", "value"),
             State("align-plot", "value"),
-            State("homology-lines", "value"),
+            # State("homology-lines", "value"),
             State("minimum-homology-length", "value"),
             State("is_set_to_extreme_homologies", "data"),
             State("annotate-sequences", "value"),
             State("annotate-genes", "value"),
             State("scale-bar", "value"),
             State("use-genes-info-from", "value"),
-            State("plot-parameters", "data"),
         ],
         prevent_initial_call=True,
     )
@@ -857,6 +905,7 @@ def create_dash_app() -> dash.Dash:
         change_homology_color_button_clicks,  # input selected color scale value
         change_gene_color_button_clicks,  # input selected color value
         update_annotations_clicks,  # input to update annotate sequences
+        update_align_sequences_clicks,  # input to update annotate sequences
         virtual,  # state of table with path to GenBank files
         active_tab,  # state activet tab
         figure_state,  # state output Figure object
@@ -865,14 +914,13 @@ def create_dash_app() -> dash.Dash:
         color_scale_state,  # state color scale
         range_slider_state,  # state range slider for color scale
         align_plot_state,  # state align plot
-        homology_lines_state,  # state homology lines
+        # homology_lines_state,  # state homology lines
         minimum_homology_length,  # state miminum homology length
         is_set_to_extreme_homologies,  # state button colorscale range
         annotate_sequences_state,  # state annotate sequences
         annotate_genes_state,  # state annotate sequences
         scale_bar_state,  # state scale bar
         use_genes_info_from_state,  # state genes info
-        plot_parameters,  # state plot parameters
     ) -> Figure:
         """Main function controling the plot.
 
@@ -885,48 +933,68 @@ def create_dash_app() -> dash.Dash:
         ctx = dash.callback_context
         button_id = ctx.triggered[0]["prop_id"].split(".")[0]
 
-        # # Print for debugging
-        # print()
-        # print(f"button id: {button_id}")
-        # print(f"slider range: {range_slider_state}")
-        print(f"align_plot: {align_plot_state}")
-        print(f"is_set_to_extreme_homologies: {is_set_to_extreme_homologies}")
-
         # ============================================================================== #
         #                             MAIN TAB -> Plot                                   #
         # ============================================================================== #
         # ==== Plot Sequences ========================================================== #
         if (button_id == "draw-button") and virtual:
-            # INITIATE PARAMETERS FOR PLOTTING.
-            # The dcc.Store "plot-parameters" will store all the data for plotting.
-            plot_parameters = dict(
-                input_files=[row["filepath"] for row in virtual],
-                output_folder=TMP_DIRECTORY.name,
-                alignments_position=align_plot_state,
-                identity_color=color_scale_state,
-                colorscale_vmin=range_slider_state[0] / 100,
-                colorscale_vmax=range_slider_state[1] / 100,
-                set_colorscale_to_extreme_homologies=is_set_to_extreme_homologies,
-                annotate_sequences=annotate_sequences_state,
-                annotate_genes=annotate_genes_state,
-                annotate_genes_with=use_genes_info_from_state,
-                straight_homology_regions=homology_lines_state,
-                minimum_homology_length=minimum_homology_length,
-                add_scale_bar=scale_bar_state,
-                selected_traces=[],
+            # Store all the metadata for plotting into the dash_parameters object. The
+            # dash_parameters object is a PlotParameters class declared at the top of
+            # the `create_dash_app` function
+
+            # Drawing plto from draw-button
+            dash_parameters.draw_from_button = button_id
+
+            # Convert paths to input_files and output_folder into Path objects
+            input_files = [Path(row["filepath"]) for row in virtual]
+            output_folder = Path(TMP_DIRECTORY.name)
+            # Store input_files and output_folder Paths in dash_parameters
+            dash_parameters.input_files = input_files
+            dash_parameters.output_folder = output_folder
+            # Make alignments
+            gb_df, cds_df, alignments_df, regions_df = plt.make_alignments(
+                input_files, output_folder
             )
+            # Add alignments to dash_paramters
+            # dash_parameters.alignments = alignments
+            # dash_parameters.gb_records = gb_records
+            dash_parameters.gb_df = gb_df
+            dash_parameters.cds_df = cds_df
+            dash_parameters.alignments_df = alignments_df
+            dash_parameters.alignments_regions_df = regions_df
+            # Find longest sequence
+            dash_parameters.longest_sequence = get_longest_sequence_dataframe(gb_df)
+
+            # Store the rest of info into dash_parameters for plotting
+            dash_parameters.alignments_position = align_plot_state
+            dash_parameters.identity_color = color_scale_state
+            dash_parameters.colorscale_vmin = range_slider_state[0] / 100
+            dash_parameters.colorscale_vmax = range_slider_state[1] / 100
+            dash_parameters.set_colorscale_to_extreme_homologies = (
+                is_set_to_extreme_homologies
+            )
+            dash_parameters.annotate_sequences = annotate_sequences_state
+            dash_parameters.annotate_genes = annotate_genes_state
+            dash_parameters.annotate_genes_with = use_genes_info_from_state
+            # For now set it to "straight". Change it after fixing the bezier storage data
+            dash_parameters.straight_homology_regions = "straight"
+            dash_parameters.minimum_homology_length = minimum_homology_length
+            dash_parameters.add_scale_bar = scale_bar_state
+            dash_parameters.selected_traces = []
+
             # Make figure and get lowest and highest identities
-            fig, lowest_identity, highest_identity = plt.make_figure(plot_parameters)
-            # Add lowest and highest identity to plot_parameters
-            plot_parameters["lowest_identity"] = lowest_identity
-            plot_parameters["highest_identity"] = highest_identity
+            fig = plt.make_figure(dash_parameters)
+
             fig.update_layout(clickmode="event+select")
             print("figure is displayed")
-            return fig, None, plot_parameters, False
+            return fig, None, False
 
         # ==== Erase plot ============================================================== #
         if button_id == "erase-button":
-            return {}, None, {}, False
+            # Reset all attributes of dash_parameters.
+            dash_parameters.reset()
+            # Return an empty figure, None for clickdata, and False for skeleton
+            return {}, None, False
 
         # ============================================================================== #
         #                           EDIT TAB -> colors                                   #
@@ -940,8 +1008,8 @@ def create_dash_app() -> dash.Dash:
                 vmin_truncate=range_slider_state[0] / 100,
                 vmax_truncate=range_slider_state[1] / 100,
                 set_colorscale_to_extreme_homologies=is_set_to_extreme_homologies,
-                lowest_homology=plot_parameters["lowest_identity"],
-                highest_homology=plot_parameters["highest_identity"],
+                lowest_homology=dash_parameters.lowest_identity,
+                highest_homology=dash_parameters.highest_identity,
             )
             # Remove old colorscale bar legend
             fig = plt.remove_traces_by_name(fig, "colorbar legend")
@@ -956,23 +1024,23 @@ def create_dash_app() -> dash.Dash:
                     vmin=range_slider_state[0] / 100,
                     vmax=range_slider_state[1] / 100,
                 ),
-                min_value=plot_parameters["lowest_identity"],
-                max_value=plot_parameters["highest_identity"],
+                min_value=dash_parameters.lowest_identity,
+                max_value=dash_parameters.highest_identity,
                 set_colorscale_to_extreme_homologies=is_set_to_extreme_homologies,
             )
-            return fig, None, plot_parameters, False
+            return fig, None, False
 
         # = Change color of selected traces = #
         if button_id == "change-gene-color-button":
-            curve_numbers = set(plot_parameters["selected_traces"])
+            curve_numbers = set(dash_parameters.selected_traces)
             # Iterate over selected curve numbers and change color
             for curve_number in curve_numbers:
                 figure_state["data"][curve_number]["fillcolor"] = color_input_state
                 figure_state["data"][curve_number]["line"]["color"] = color_input_state
                 figure_state["data"][curve_number]["line"]["width"] = 1
             # Empty "selected_traces" list.
-            plot_parameters["selected_traces"].clear()
-            return figure_state, None, plot_parameters, False
+            dash_parameters.selected_traces.clear()
+            return figure_state, None, False
 
         # = Select traces for changing color = #
         if (
@@ -984,17 +1052,26 @@ def create_dash_app() -> dash.Dash:
             curve_number = click_data["points"][0]["curveNumber"]
             # If curve_number already in "selected_traces", remove it from the list and
             # restore trace to its previous state; this creates the effect of deselecting.
-            if curve_number in plot_parameters["selected_traces"]:
-                plot_parameters["selected_traces"].remove(curve_number)
+            if curve_number in dash_parameters.selected_traces:
+                dash_parameters.selected_traces.remove(curve_number)
                 fillcolor = figure_state["data"][curve_number]["fillcolor"]
                 figure_state["data"][curve_number]["line"]["color"] = fillcolor
                 figure_state["data"][curve_number]["line"]["width"] = 1
-                return figure_state, None, plot_parameters, False
+                return figure_state, None, False
             # Save the curve number in "selected_traces" for future modification
-            plot_parameters["selected_traces"].append(curve_number)
+            dash_parameters.selected_traces.append(curve_number)
             # Make selection effect by changing line color of selected trace
             fig = plt.make_selection_effect(figure_state, curve_number)
-            return fig, None, plot_parameters, False
+            return fig, None, False
+
+        # ==== Aligned sequences in the plot ======================================= #
+        if button_id == "update-align-sequences-button":
+            if align_plot_state != dash_parameters.alignments_position:
+                # Change the value of dash_parameters -> alignments_position
+                dash_parameters.alignments_position = align_plot_state
+                # Make figure and get lowest and highest identities
+                fig = plt.make_figure(dash_parameters)
+                return fig, None, False
 
         # ============================================================================== #
         #                                ANNOTATE TAB                                    #
@@ -1002,11 +1079,12 @@ def create_dash_app() -> dash.Dash:
         if figure_state and button_id == "update-annotations":
             # Convert the figure_state dictionary into a Figure object
             fig = Figure(data=figure_state["data"], layout=figure_state["layout"])
+
             # ==== Change annotation to DNA sequences ================================== #
-            # check if value of annotate_sequences_state is different in plot_parameters
-            if annotate_sequences_state != plot_parameters["annotate_sequences"]:
-                # Change value of plot_parameters -> annotate_sequences
-                plot_parameters["annotate_sequences"] = annotate_sequences_state
+            # check if value of annotate_sequences_state is different in dash_parameters
+            if annotate_sequences_state != dash_parameters.annotate_sequences:
+                # Change value of dash_parameters -> annotate_sequences
+                dash_parameters.annotate_sequences = annotate_sequences_state
                 # Remove any dna sequence annotations
                 fig = plt.remove_annotations_by_name(fig, "Sequence annotation:")
                 # If annotate_sequences_state is not "no" add annotations.
@@ -1015,19 +1093,19 @@ def create_dash_app() -> dash.Dash:
                         fig, annotate_sequences_state
                     )
             # ==== Toggle scale bar ==================================================== #
-            # check if value of scale_bar_state is different in plot_parameters
-            if scale_bar_state != plot_parameters["add_scale_bar"]:
-                # change value of plot_parameters -> add_cale_bar
-                plot_parameters["add_scale_bar"] = scale_bar_state
+            # check if value of scale_bar_state is different in dash_parameters
+            if scale_bar_state != dash_parameters.add_scale_bar:
+                # change value of dash_parameters -> add_cale_bar
+                dash_parameters.add_scale_bar = scale_bar_state
                 # toggle scale bar
                 fig = plt.toggle_scale_bar(
                     fig, True if scale_bar_state == "yes" else False
                 )
             # ==== Change annotation to genes ========================================== #
-            # check if value of annotate_genes_state is different in plot_parameters
-            if annotate_genes_state != plot_parameters["annotate_genes"]:
-                # change value of plot_parameters -> annotate_genes
-                plot_parameters["annotate_genes"] = annotate_genes_state
+            # check if value of annotate_genes_state is different in dash_parameters
+            if annotate_genes_state != dash_parameters.annotate_genes:
+                # change value of dash_parameters -> annotate_genes
+                dash_parameters.annotate_genes = annotate_genes_state
                 # Remove any gene annotations
                 fig = plt.remove_annotations_by_name(fig, "Gene annotation:")
                 if annotate_genes_state == "top":
@@ -1037,9 +1115,9 @@ def create_dash_app() -> dash.Dash:
                 if annotate_genes_state == "top-bottom":
                     fig = plt.annotate_genes_top_using_trace_customdata(fig)
                     fig = plt.annotate_genes_bottom_using_trace_customdata(fig)
-            return fig, None, plot_parameters, False
+            return fig, None, False
 
-        return figure_state, None, plot_parameters, False
+        return figure_state, None, False
 
     # ==== activate update buttons only when there is a figure ========================= #
     @app.callback(
@@ -1049,13 +1127,14 @@ def create_dash_app() -> dash.Dash:
             Output("change-gene-color-button", "disabled"),
             Output("change-homology-color-button", "disabled"),
             Output("select-change-color-button", "disabled"),
+            Output("update-align-sequences-button", "disabled"),
         ],
         Input("plot", "figure"),
     )
     def toggle_update_buttons(figure) -> bool:
         if figure and figure.get("data", []):
-            return [False] * 5
-        return [True] * 5
+            return [False] * 6
+        return [True] * 6
 
     # ==== activate Draw button when files in upload table ============================= #
     @app.callback(
