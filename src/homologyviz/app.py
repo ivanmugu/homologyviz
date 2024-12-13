@@ -666,6 +666,7 @@ def make_tab_save() -> dbc.Tab:
                             {"value": "jpg", "label": "jpg"},
                             {"value": "pdf", "label": "pdf"},
                             {"value": "svg", "label": "svg"},
+                            {"value": "html", "label": "html"},
                         ],
                         w=100,
                         size="sm",
@@ -1249,29 +1250,44 @@ def create_dash_app() -> dash.Dash:
         width,
         height,
     ):
-        # Create an in-memory bytes buffer
-        buffer = BytesIO()
-
-        # Convert figure to an image in the chosen format and DPI
+        # Convert figure dictionary into a Figure object
         fig = Figure(data=figure["data"], layout=figure["layout"])
 
-        fig.write_image(
-            buffer,
-            format=figure_format,
-            width=width,
-            height=height,
-            scale=scale,
-            engine="kaleido",
-        )
+        if figure_format == "html":
+            html_content = fig.to_html(full_html=True, include_plotlyjs="cdn")
+            figure_name = "plot.html"
 
-        # Encode the buffer as a base64 string
-        encoded = base64.b64encode(buffer.getvalue()).decode()
-        figure_name = f"plot.{figure_format}"
+            # Encode the HTML content to base64 for download
+            encoded = base64.b64encode(html_content.encode()).decode()
 
-        # Return data for dmc.Download to promto a download
-        return dict(
-            base64=True, content=encoded, filename=figure_name, type=figure_format
-        )
+            # Return data for dmc.Download to prompt a download
+            return dict(
+                base64=True, content=encoded, filename=figure_name, type="text/html"
+            )
+
+        # If user didn't select html convert Figure object into an image in the
+        # chosen format and DPI
+        else:
+            # Create an in-memory bytes buffer
+            buffer = BytesIO()
+
+            fig.write_image(
+                buffer,
+                format=figure_format,
+                width=width,
+                height=height,
+                scale=scale,
+                engine="kaleido",
+            )
+
+            # Encode the buffer as a base64 string
+            encoded = base64.b64encode(buffer.getvalue()).decode()
+            figure_name = f"plot.{figure_format}"
+
+            # Return data for dmc.Download to prompt a download
+            return dict(
+                base64=True, content=encoded, filename=figure_name, type=figure_format
+            )
 
     # ↓↓↓↓ CHECKING IF TAB WAS CLOSED TO KILL SERVER ↓↓↓↓ #
     @app.server.route("/heartbeat", methods=["POST"])
