@@ -24,10 +24,7 @@ from dash import Input, Output, State
 from plotly.graph_objects import Figure
 
 from homologyviz import plotter as plt
-from homologyviz.gb_files_manipulation import (
-    get_longest_sequence_dataframe,
-    PlotParameters,
-)
+from homologyviz.gb_files_manipulation import get_longest_sequence_dataframe
 
 
 class HeartBeatsParameters:
@@ -97,7 +94,7 @@ def register_callbacks(app: dash.Dash) -> dash.Dash:
     heartbeat_parameters = HeartBeatsParameters()
 
     # Class to store alignments data
-    dash_parameters = PlotParameters()
+    dash_parameters = plt.PlotParameters()
 
     # ==== files-table for selected GenBank files ====================================== #
     @app.callback(
@@ -198,7 +195,7 @@ def register_callbacks(app: dash.Dash) -> dash.Dash:
         The Output to Plot—clickData to None in all the returns allows selecting and
         deselecting traces in the plot.
         """
-        # Use context to find button that triggered the callback.
+        # Use context to find the button that triggered the callback.
         ctx = dash.callback_context
         button_id = ctx.triggered[0]["prop_id"].split(".")[0]
 
@@ -211,7 +208,7 @@ def register_callbacks(app: dash.Dash) -> dash.Dash:
             # dash_parameters object is a PlotParameters class declared at the top of
             # the `create_dash_app` function
 
-            # Drawing plto from draw-button
+            # Drawing plot from draw-button
             dash_parameters.draw_from_button = button_id
 
             # Convert paths to input_files and output_folder into Path objects
@@ -220,13 +217,13 @@ def register_callbacks(app: dash.Dash) -> dash.Dash:
             # Store input_files and output_folder Paths in dash_parameters
             dash_parameters.input_files = input_files
             dash_parameters.output_folder = output_folder
+            # Save number of files
+            dash_parameters.number_gb_records = len(input_files)
             # Make alignments
             gb_df, cds_df, alignments_df, regions_df = plt.make_alignments(
                 input_files, output_folder
             )
-            # Add alignments to dash_paramters
-            # dash_parameters.alignments = alignments
-            # dash_parameters.gb_records = gb_records
+            # Add alignments to dash_parameters
             dash_parameters.gb_df = gb_df
             dash_parameters.cds_df = cds_df
             dash_parameters.alignments_df = alignments_df
@@ -234,7 +231,7 @@ def register_callbacks(app: dash.Dash) -> dash.Dash:
             # Find longest sequence
             dash_parameters.longest_sequence = get_longest_sequence_dataframe(gb_df)
 
-            # Store the rest of info into dash_parameters for plotting
+            # Store the rest of information provided by the user for plotting
             dash_parameters.alignments_position = align_plot_state
             dash_parameters.identity_color = color_scale_state
             dash_parameters.colorscale_vmin = range_slider_state[0] / 100
@@ -245,13 +242,18 @@ def register_callbacks(app: dash.Dash) -> dash.Dash:
             dash_parameters.annotate_sequences = annotate_sequences_state
             dash_parameters.annotate_genes = annotate_genes_state
             dash_parameters.annotate_genes_with = use_genes_info_from_state
+            print("annotate genes info from:")
+            print(dash_parameters.annotate_genes_with)
             # For now set it to "straight". Change it after fixing the bezier storage data
             dash_parameters.straight_homology_regions = "straight"
             dash_parameters.minimum_homology_length = minimum_homology_length
             dash_parameters.add_scale_bar = scale_bar_state
             dash_parameters.selected_traces = []
 
-            # Make figure and get lowest and highest identities
+            # Set separation of sequences in the Y axis
+            dash_parameters.y_separation = 10
+
+            # Make figure
             fig = plt.make_figure(dash_parameters)
 
             fig.update_layout(clickmode="event+select")
@@ -377,13 +379,9 @@ def register_callbacks(app: dash.Dash) -> dash.Dash:
                 dash_parameters.annotate_genes = annotate_genes_state
                 # Remove any gene annotations
                 fig = plt.remove_annotations_by_name(fig, "Gene annotation:")
-                if annotate_genes_state == "top":
-                    fig = plt.annotate_genes_top_using_trace_customdata(fig)
-                if annotate_genes_state == "bottom":
-                    fig = plt.annotate_genes_bottom_using_trace_customdata(fig)
-                if annotate_genes_state == "top-bottom":
-                    fig = plt.annotate_genes_top_using_trace_customdata(fig)
-                    fig = plt.annotate_genes_bottom_using_trace_customdata(fig)
+                if annotate_genes_state != "no":
+                    fig = plt.annotate_genes(fig, dash_parameters)
+
             return fig, None, False
 
         return figure_state, None, False

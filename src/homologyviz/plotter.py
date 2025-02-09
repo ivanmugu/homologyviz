@@ -1,4 +1,4 @@
-"""Make a graphical representation of BLASTn alignments.
+"""Function and classes to make a graphical representation of BLASTn alignments.
 
 Homology Visualization (HomologyViz) uses GenBank files (.gb) to align the sequences and
 plot the genes. HomologyViz uses the information from the `CDS` features section to plot
@@ -26,14 +26,74 @@ import matplotlib.colors as mcolors
 from homologyviz.arrow import Arrow
 from homologyviz.rectangle_bezier import RectangleCurveHeight
 from homologyviz import gb_files_manipulation as genbank
-from homologyviz.gb_files_manipulation import PlotParameters
+
 from homologyviz import miscellaneous as misc
 
 
 # TODO: I have to check how to store the data of bezier lines in a dataframe.
 # ====================================================================================== #
-#                             FUNCTIONS FOR PLOTTING                                     #
+#                        FUNCTIONS AND CLASSES FOR PLOTTING                              #
 # ====================================================================================== #
+class PlotParameters:
+    """Store alignments information for plotting in Dash."""
+
+    def __init__(
+        self,
+        input_files: None | list[Path] = None,
+        number_gb_records: None | int = None,
+        output_folder: None | Path = None,
+        alignments_position: None | str = None,
+        identity_color: None | str = None,
+        colorscale_vmin: None | float = None,
+        colorscale_vmax: None | float = None,
+        set_colorscale_to_extreme_homologies: None | bool = None,
+        annotate_sequences: None | str = None,
+        annotate_genes: None | str = None,
+        annotate_genes_with: None | str = None,
+        straight_homology_regions: None | bool = None,
+        minimum_homology_length: None | int = None,
+        add_scale_bar: None | str = None,
+        selected_traces: None | list = None,
+        lowest_identity: None | float = None,
+        highest_identity: None | float = None,
+        longest_sequence: None | int = None,
+        gb_df: None | DataFrame = None,
+        cds_df: None | DataFrame = None,
+        alignments_df: None | DataFrame = None,
+        alignments_regions_df: None | DataFrame = None,
+        draw_from_button: None | str = None,
+        y_separation: None | float = None,
+    ):
+        self.input_files = input_files
+        self.number_gb_records = number_gb_records
+        self.output_folder = output_folder
+        self.alignments_position = alignments_position
+        self.identity_color = identity_color
+        self.colorscale_vmin = colorscale_vmin
+        self.colorscale_vmax = colorscale_vmax
+        self.set_colorscale_to_extreme_homologies = set_colorscale_to_extreme_homologies
+        self.annotate_sequences = annotate_sequences
+        self.annotate_genes = annotate_genes
+        self.annotate_genes_with = annotate_genes_with
+        self.straight_homology_regions = straight_homology_regions
+        self.minimum_homology_length = minimum_homology_length
+        self.add_scale_bar = add_scale_bar
+        self.selected_traces = selected_traces
+        self.lowest_identity = lowest_identity
+        self.highest_identity = highest_identity
+        self.longest_sequence = longest_sequence
+        self.gb_df = gb_df
+        self.cds_df = cds_df
+        self.alignments_df = alignments_df
+        self.alignments_regions_df = alignments_regions_df
+        self.draw_from_button = draw_from_button
+        self.y_separation = y_separation
+
+    def reset(self):
+        """Reset all attributes to their default values."""
+        self.__init__()
+
+
 def create_color_line(colors) -> Figure:
     """Create a continues color line based on selected color scale.
 
@@ -275,7 +335,8 @@ def plot_dna_sequences_with_dataframe(
 
 def plot_genes_with_dataframe(
     fig: Figure,
-    gb_records: DataFrame,
+    number_gb_records: int,
+    longest_sequence: int,
     cds_records: DataFrame,
     name_from: str = "product",
     y_separation: int = 10,
@@ -284,12 +345,8 @@ def plot_genes_with_dataframe(
 
     The customdata has information for annotating the plot dinamically in Dash.
     """
-    # Number of gb_records (rows)
-    number_gb_records = len(gb_records)
     # Position of the first DNA sequence in the y axis. Plotting starts at the top.
     y = number_gb_records * y_separation
-    # Find longest sequence
-    longest_sequence = genbank.get_longest_sequence_dataframe(gb_records)
     # Ratio head_height vs lenght of longest sequence
     ratio = 0.02
     head_height = longest_sequence * ratio
@@ -439,76 +496,90 @@ def annotate_dna_sequences_using_trace_customdata(
     return figure
 
 
-def annotate_genes_top_using_trace_customdata(figure: Figure) -> Figure:
-    """Annotate top genes using trace customdata
-
-    The trace customdata is created when plotting using the plot_genes function.
-    """
-    for trace in figure["data"]:
-        if "customdata" not in trace:
-            continue
-        if trace["customdata"] is None:
-            continue
-        if "gene_info" in trace["customdata"][0].get("type", ""):
-            gb_record = trace["customdata"][0]["gb_record_number"]
-            # If gb_record is not the top (i. e. zero), continue.
-            if gb_record != 0:
-                continue
-            x_start = float(trace["customdata"][0]["x_start_plot"])
-            x_end = float(trace["customdata"][0]["x_end_plot"])
-            y = float(trace["customdata"][0]["y"])
-            x_position = (x_start + x_end) / 2
-            y_position = y
-            name = trace["text"]
-            figure.add_annotation(
-                x=x_position,
-                y=y_position + 1.1,
-                text=name,
-                name=f"Gene annotation: {name}",
-                showarrow=False,
-                textangle=270,
-                font=dict(size=16),
-                xanchor="center",
-                yanchor="bottom",
-            )
-    return figure
+def annotate_top_genes(
+    fig: Figure,
+    annotate_genes_with: str,
+    number_gb_records: int,
+    cds_records: DataFrame,
+    y_separation: int = 10,
+) -> Figure:
+    """Annotate top genes using pandas.DataFrame with cds metadata."""
+    # Filter rows to get the ones that belong to the top sequence
+    df_file_number_0 = cds_records.loc[cds_records["file_number"] == 0]
+    y = y_separation * number_gb_records
+    # Iterate over rows of file_number 0 to annotate genes
+    for _, row in df_file_number_0.iterrows():
+        x_start = row["start_plot"]
+        x_end = row["end_plot"]
+        x = (x_start + x_end) / 2
+        name = row[annotate_genes_with]
+        fig.add_annotation(
+            x=x,
+            y=y + 1.1,
+            text=name,
+            name=f"Gene annotation: {name}",
+            showarrow=False,
+            textangle=270,
+            font=dict(size=16),
+            xanchor="center",
+            yanchor="bottom",
+        )
+    return fig
 
 
-def annotate_genes_bottom_using_trace_customdata(figure: Figure) -> Figure:
-    """Annotate bottom genes using trace customdata
+def annotate_bottom_genes(
+    fig: Figure,
+    annotate_genes_with: str,
+    number_gb_records: int,
+    cds_records: DataFrame,
+    y_separation: int = 10,
+) -> Figure:
+    """Annotate bottom genes using pandas.DataFrame with cds metadata."""
+    # Filter rows to get the ones that belong to the bottom sequence
+    df_file_number_0 = cds_records.loc[
+        cds_records["file_number"] == number_gb_records - 1
+    ]
+    y = y_separation
+    # Iterate over rows of file_number 0 to annotate genes
+    for _, row in df_file_number_0.iterrows():
+        x_start = row["start_plot"]
+        x_end = row["end_plot"]
+        x = (x_start + x_end) / 2
+        name = row[annotate_genes_with]
+        fig.add_annotation(
+            x=x,
+            y=y - 1.1,
+            text=name,
+            name=f"Gene annotation: {name}",
+            showarrow=False,
+            textangle=270,
+            font=dict(size=16),
+            xanchor="center",
+            yanchor="top",
+        )
+    return fig
 
-    The trace customdata is created when plotting using the plot_genes function.
-    """
-    for trace in figure["data"]:
-        if "customdata" not in trace:
-            continue
-        if trace["customdata"] is None:
-            continue
-        if "gene_info" in trace["customdata"][0].get("type", ""):
-            gb_record = trace["customdata"][0]["gb_record_number"]
-            number_gb_records = trace["customdata"][0]["number_gb_records"]
-            # if gb_record is not the last one, continue
-            if gb_record != (number_gb_records - 1):
-                continue
-            # print(trace)
-            x_start = float(trace["customdata"][0]["x_start_plot"])
-            x_end = float(trace["customdata"][0]["x_end_plot"])
-            y = float(trace["customdata"][0]["y"])
-            x_position = (x_start + x_end) / 2
-            y_position = y
-            name = trace["text"]
-            figure.add_annotation(
-                x=x_position,
-                y=y_position - 1.1,
-                text=name,
-                name=f"Gene annotation: {name}",
-                showarrow=False,
-                textangle=270,
-                font=dict(size=16),
-                xanchor="center",
-                yanchor="top",
-            )
-    return figure
+
+def annotate_genes(fig: Figure, plot_parameters: PlotParameters) -> Figure:
+    """Annotate genes using cds records from pandas.DataFrame."""
+    annotate_genes = plot_parameters.annotate_genes
+    if annotate_genes == "top" or annotate_genes == "top-bottom":
+        fig = annotate_top_genes(
+            fig=fig,
+            annotate_genes_with=plot_parameters.annotate_genes_with,
+            number_gb_records=plot_parameters.number_gb_records,
+            cds_records=plot_parameters.cds_df,
+            y_separation=plot_parameters.y_separation,
+        )
+    if annotate_genes == "bottom" or annotate_genes == "top-bottom":
+        fig = annotate_bottom_genes(
+            fig=fig,
+            annotate_genes_with=plot_parameters.annotate_genes_with,
+            number_gb_records=plot_parameters.number_gb_records,
+            cds_records=plot_parameters.cds_df,
+            y_separation=plot_parameters.y_separation,
+        )
+    return fig
 
 
 def remove_traces_by_name(figure: Figure, name: str) -> dict:
@@ -668,7 +739,31 @@ def toggle_scale_bar(figure: Figure, show: bool) -> Figure:
 def make_alignments(
     input_files: list[Path], output_folder: Path
 ) -> tuple[DataFrame, DataFrame, DataFrame, DataFrame]:
-    """BLAST nucleotide sequences to make alignments."""
+    """BLAST nucleotide sequences to make alignments and return DataFrames with metadata
+    from BLATing retults for plotting
+
+    Return
+    ------
+    gb_df : pandas.DataFrame
+        DataFrame storing GenBank record data such as file path, file name, and sequence
+        length. The DataFrame includes a file number and an acession number colum to make
+        a relational database with the cds_df
+    cds_df : pandas.DataFrame
+        DataFrame storing the coding sequences information from each GenBank file. The
+        DataFrame includes a file number and an acession number colum to make a relational
+        database with the gb_df. This dataframe compiles gene name, product name, start of
+        the gene, end of the gene, strand, color, start of the gene for ploting and end of
+        the gene for plotting.
+    alignments_df : pandas.DataFrame
+        DataFrame storing BLAST metadata results such as alignments number, query name,
+        hit name, query length, and hit length.
+    regions_df : pandas.DataFrame
+        DataFrame storing the regions that math between two sequences during BLASTing. The
+        metadata includes an alignment number to make a relational database with the
+        alignments_df. For more details of metadata stored in regions_df check the
+        `parse_blast_record` function in the gb_files_manipulation module.
+
+    """
     # Create fasta files for BLASTing using the gb files
     faa_files = genbank.make_fasta_files(input_files, output_folder)
     # Run blastn locally to make alignments.
@@ -737,6 +832,7 @@ def make_figure(plot_parameters: PlotParameters) -> Figure:
         hovermode="closest",
     )
 
+    # Get lowest and hightest homologies.
     lowest_identity, highest_identity = (
         genbank.find_lowest_and_highest_homology_dataframe(
             plot_parameters.alignments_regions_df
@@ -759,19 +855,22 @@ def make_figure(plot_parameters: PlotParameters) -> Figure:
 
     # Plot the DNA sequences
     fig = plot_dna_sequences_with_dataframe(
-        fig,
-        plot_parameters.gb_df,
-        plot_parameters.longest_sequence,
+        fig=fig,
+        gb_records=plot_parameters.gb_df,
+        longest_sequence=plot_parameters.longest_sequence,
+        y_separation=plot_parameters.y_separation,
     )
+
     # Plot the homology regions
     straight_homology_regions = (
         True if plot_parameters.straight_homology_regions == "straight" else False
     )
 
     fig = plot_homology_regions_with_dataframe(
-        fig,
+        fig=fig,
         alignments_df=plot_parameters.alignments_df,
         regions_df=plot_parameters.alignments_regions_df,
+        y_separation=plot_parameters.y_separation,
         colorscale=colorscale,
         straight_heights=straight_homology_regions,
         minimum_homology_length=plot_parameters.minimum_homology_length,
@@ -782,17 +881,14 @@ def make_figure(plot_parameters: PlotParameters) -> Figure:
 
     fig = plot_genes_with_dataframe(
         fig=fig,
-        gb_records=plot_parameters.gb_df,
+        number_gb_records=plot_parameters.number_gb_records,
+        longest_sequence=plot_parameters.longest_sequence,
         cds_records=plot_parameters.cds_df,
+        y_separation=plot_parameters.y_separation,
     )
     # Annotate genes
-    if plot_parameters.annotate_genes == "top":
-        fig = annotate_genes_top_using_trace_customdata(fig)
-    if plot_parameters.annotate_genes == "bottom":
-        fig = annotate_genes_bottom_using_trace_customdata(fig)
-    if plot_parameters.annotate_genes == "top-bottom":
-        fig = annotate_genes_top_using_trace_customdata(fig)
-        fig = annotate_genes_bottom_using_trace_customdata(fig)
+    if plot_parameters.annotate_genes != "no":
+        fig = annotate_genes(fig, plot_parameters)
     # Annotate DNA sequences
     if (sequence_name := plot_parameters.annotate_sequences) != "no":
         # fig = annotate_dna_sequences(fig, gb_records, longest_sequence, sequence_name)

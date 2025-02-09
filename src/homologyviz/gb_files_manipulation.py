@@ -1,4 +1,4 @@
-"""Functions and classes to manipulate GenBank files for HomologyViz.
+"""Functions to manipulate GenBank files and BLASTn results for HomologyViz.
 
 License
 -------
@@ -134,7 +134,9 @@ def genbank_files_metadata_to_dataframes(
     cds_df : pandas.DataFrame
         DataFrame storing the coding sequences information from each GenBank file. The
         DataFrame includes a file number and an acession number colum to make a relational
-        database with the gb_df.
+        database with the gb_df. This dataframe compiles gene name, product name, start of
+        the gene, end of the gene, strand, color, start of the gene for ploting and end of
+        the gene for plotting.
     """
     # headers gb_files_df
     headers_gb_files_df = [
@@ -199,7 +201,7 @@ def parse_genbank_cds_to_df(
 
     Returns
     -------
-    DataFrame
+    pandas.DataFrame
         DataFrame holding CDSs' information.
     """
     # DataFrame headers
@@ -278,7 +280,19 @@ def parse_genbank_cds_to_df(
 def blast_alignments_to_dataframe(
     xml_alignment_result: list[Path],
 ) -> list[DataFrame, DataFrame]:
-    """Store a BLASTn alignments results into Pandas DataFrames"""
+    """Store a BLASTn alignments results into Pandas DataFrames.
+
+    Return
+    ------
+    alignments_df : pandas.DataFrame
+        DataFrame storing BLAST metadata results such as alignments number, query name,
+        hit name, query length, and hit length.
+    regions_df : pandas.DataFrame
+        DataFrame storing the regions that math between two sequences during BLASTing. The
+        metadata includes an alignment number to make a relational database with the
+        alignments_df. For more details of metadata stored in regions_df check the
+        `parse_blast_record` function in the gb_files_manipulation module.
+    """
     headers = ["alignment_number", "query_name", "hit_name", "query_len", "hit_len"]
     data = dict(
         alignment_number=[],
@@ -309,6 +323,11 @@ def blast_alignments_to_dataframe(
 
 
 def parse_blast_record(blast_record: Record, alignment_number: int) -> DataFrame:
+    """Parse blast records to store metadata related the regions that match during
+    BLASTing two sequences.
+
+    Check the metadata in the `headers` variable.
+    """
     headers = [
         "alignment_number",
         "query_from",
@@ -356,62 +375,6 @@ def parse_blast_record(blast_record: Record, alignment_number: int) -> DataFrame
         data["homology"].append(homology)
     regions_df = pd.DataFrame(data, columns=headers)
     return regions_df
-
-
-class PlotParameters:
-    """Store alignments information for plotting in Dash."""
-
-    def __init__(
-        self,
-        input_files: None | list[Path] = None,
-        output_folder: None | Path = None,
-        alignments_position: None | str = None,
-        identity_color: None | str = None,
-        colorscale_vmin: None | float = None,
-        colorscale_vmax: None | float = None,
-        set_colorscale_to_extreme_homologies: None | bool = None,
-        annotate_sequences: None | str = None,
-        annotate_genes: None | str = None,
-        annotate_genes_with: None | str = None,
-        straight_homology_regions: None | bool = None,
-        minimum_homology_length: None | int = None,
-        add_scale_bar: None | str = None,
-        selected_traces: None | list = None,
-        lowest_identity: None | float = None,
-        highest_identity: None | float = None,
-        longest_sequence: None | int = None,
-        gb_df: None | DataFrame = None,
-        cds_df: None | DataFrame = None,
-        alignments_df: None | DataFrame = None,
-        alignments_regions_df: None | DataFrame = None,
-        draw_from_button: None | str = None,
-    ):
-        self.input_files = input_files
-        self.output_folder = output_folder
-        self.alignments_position = alignments_position
-        self.identity_color = identity_color
-        self.colorscale_vmin = colorscale_vmin
-        self.colorscale_vmax = colorscale_vmax
-        self.set_colorscale_to_extreme_homologies = set_colorscale_to_extreme_homologies
-        self.annotate_sequences = annotate_sequences
-        self.annotate_genes = annotate_genes
-        self.annotate_genes_with = annotate_genes_with
-        self.straight_homology_regions = straight_homology_regions
-        self.minimum_homology_length = minimum_homology_length
-        self.add_scale_bar = add_scale_bar
-        self.selected_traces = selected_traces
-        self.lowest_identity = lowest_identity
-        self.highest_identity = highest_identity
-        self.longest_sequence = longest_sequence
-        self.gb_df = gb_df
-        self.cds_df = cds_df
-        self.alignments_df = alignments_df
-        self.alignments_regions_df = alignments_regions_df
-        self.draw_from_button = draw_from_button
-
-    def reset(self):
-        """Reset all attributes to their default values."""
-        self.__init__()
 
 
 def get_longest_sequence_dataframe(gb_records: DataFrame) -> int:
@@ -593,17 +556,23 @@ def check_if_sequences_are_at_left(cds: DataFrame):
 
 
 if __name__ == "__main__":
-    # test
-    xml1 = Path(
-        "/Users/msp/Documents/Coding/python_projects/HomologyViz/data/SW4848_paper/result0.xml"
-    )
-    xml2 = Path(
-        "/Users/msp/Documents/Coding/python_projects/HomologyViz/data/SW4848_paper/result1.xml"
-    )
-    alignments_df, regions_df = blast_alignments_to_dataframe([xml1, xml2])
+    # # test
+    # xml1 = Path(
+    #     "/Users/msp/Documents/Coding/python_projects/HomologyViz/data/SW4848_paper/result0.xml"
+    # )
+    # xml2 = Path(
+    #     "/Users/msp/Documents/Coding/python_projects/HomologyViz/data/SW4848_paper/result1.xml"
+    # )
+    # alignments_df, regions_df = blast_alignments_to_dataframe([xml1, xml2])
 
-    print(alignments_df)
-    print(regions_df["homology"].min())
+    # print(alignments_df)
+    # print(regions_df["homology"].min())
+
+    gb1 = Path(
+        "/Users/msp/Documents/Coding/python_projects/HomologyViz/data/SW4848_paper/Tn21.gb"
+    )
+    gb_df, cds_df = genbank_files_metadata_to_dataframes([gb1])
+    print(cds_df)
     # cds_df_groups = cds_df.groupby(["file_number"])
     # print(f"the length of the groups is: {len(cds_df_groups)}")
     # for file_number, group in cds_df_groups:
