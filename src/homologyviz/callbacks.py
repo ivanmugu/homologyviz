@@ -360,8 +360,13 @@ def register_callbacks(app: dash.Dash) -> dash.Dash:
                 fig = plt.remove_annotations_by_name(fig, "Sequence annotation:")
                 # If annotate_sequences_state is not "no" add annotations.
                 if annotate_sequences_state != "no":
-                    fig = plt.annotate_dna_sequences_using_trace_customdata(
-                        fig, annotate_sequences_state
+                    fig = plt.annotate_dna_sequences(
+                        fig=fig,
+                        gb_records=dash_parameters.gb_df,
+                        longest_sequence=dash_parameters.longest_sequence,
+                        number_gb_records=dash_parameters.number_gb_records,
+                        annotate_with=dash_parameters.annotate_sequences,
+                        y_separation=dash_parameters.y_separation,
                     )
             # ==== Toggle scale bar ==================================================== #
             # check if value of scale_bar_state is different in dash_parameters

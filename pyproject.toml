@@ -4,18 +4,21 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "homologyviz"
-version = "0.1.3"
+version = "0.1.4"
 authors = [
-    {name = "Ivan Munoz-Gutierrez", email = "ivan.munoz.gutierrez@gmail.com"},
+    { name = "Ivan Munoz-Gutierrez", email = "ivan.munoz.gutierrez@gmail.com" },
 ]
 maintainers = [
-    {name = "Ivan Munoz-Gutierrez", email = "ivan.munoz.gutierrez@gmail.com"},
+    { name = "Ivan Munoz-Gutierrez", email = "ivan.munoz.gutierrez@gmail.com" },
 ]
 description = "Make graphical representations of BLASTn alignments"
 readme = "README.md"
 license = { text = "BSD 3-Clause License" }
 keywords = [
-    "DNA alignments", "BLASTn", "Graphical BLASTn alignments", "easyfig"
+    "DNA alignments",
+    "BLASTn",
+    "Graphical BLASTn alignments",
+    "easyfig",
 ]
 classifiers = [
     "Programming Language :: Python",

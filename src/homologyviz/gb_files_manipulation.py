@@ -149,7 +149,7 @@ def genbank_files_metadata_to_dataframes(
         "sequence_start",
         "sequence_end",
     ]
-    # Initiate dictionary to stroe data
+    # Initiate dictionary to store data
     gb_files_data = dict(
         file_number=[],
         file_path=[],
@@ -572,7 +572,8 @@ if __name__ == "__main__":
         "/Users/msp/Documents/Coding/python_projects/HomologyViz/data/SW4848_paper/Tn21.gb"
     )
     gb_df, cds_df = genbank_files_metadata_to_dataframes([gb1])
-    print(cds_df)
+    # print(cds_df)
+    print(gb_df)
     # cds_df_groups = cds_df.groupby(["file_number"])
     # print(f"the length of the groups is: {len(cds_df_groups)}")
     # for file_number, group in cds_df_groups:

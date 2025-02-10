@@ -31,11 +31,89 @@ from homologyviz import miscellaneous as misc
 
 
 # TODO: I have to check how to store the data of bezier lines in a dataframe.
-# ====================================================================================== #
-#                        FUNCTIONS AND CLASSES FOR PLOTTING                              #
-# ====================================================================================== #
+
+
 class PlotParameters:
-    """Store alignments information for plotting in Dash."""
+    """Store alignments information and user input for plotting in Dash.
+
+    This class was designed to colled information during the Dash callbacks.
+
+    Parameters
+    ----------
+    input_files : Path
+        List of genbank files to BLAST.
+    number_gb_records : int
+        Number of gb files to BLAST.
+    output_folder : Path
+        Path to output any result. This can be the path to a temporary directory.
+    alignments_position : str
+        Position of the alignemts in the plot. Options are left, center, or right.
+    identity_color : str
+        Selected colormap to show the different shades that represent identities. For
+        example `Greys`, `Greens`, and `Blues`.
+    colorscale_vmin : float
+        Minimum value to use in the colormap to represent identities. Values can go from
+        0 to 1.0; for example, a value of 0.5 represents the shade at the center of the
+        colormap.
+    colorscale_vmax : float
+        Maximum value to use in the colormap to represent identities. Values can go from
+        0 to 1.0; for example, a value of 1.0 represents the shade with the highest value
+        in the colormap.
+    set_colorscale_to_extreme_homologies : bool
+        If this parameter is set to True, the lowest and highest homologies will be
+        represented by the values used in colorscale_vmin and colorscale_vmax,
+        respectively. Otherwise, the lowest and highest homologies will be represented by
+        0 and 1.0 in the colorsle by, respectively.
+    annotate_sequences : str
+        Annotate DNA sequences. Options:
+        - no: no annotations
+        - accession: use the accesion number
+        - name: use the sequence name
+        - fname: use the file name
+    annotate_genes : str
+        Annotate genes on the DNA sequences. Options:
+        - no: no annotations
+        - top: annotate only the genes at the top sequence.
+        - bottom: annotate only the genes at the bottom sequence.
+        - top-bottom: annotate only the genes at the top and bottom sequences.
+    annotate_genes_with : str
+        Annotate genes using GenBank file metadata stored in `CDS gene` or `CDS product`.
+        Options are `gene` and `product`.
+    stright_homology_regions : bool
+        It this parameter is the to False, the shadows reprenting homologies with have a
+        Bezier shape.
+    minimium_homology_lenght : int
+        This number represent the lenght of the minimum homology shown in the plot. For
+        example, if it is set to 500, all homologies spanning 500 or more nucleotides are
+        shown.
+    add_scale_bar : str
+        Show the scale bar in plot. Option are `yes` or `no`.
+    selected_traces : list
+        List of `curve_numbers` of selected traces. This list is used when the user selec
+        genes in the `edit` tab to change their colors.
+    lowest_identity : float
+        Lowest identity in the BLASTn analysis.
+    highest_identity : float
+        Highest identity in the BLASTn analysis.
+    longest_sequence : int
+        Lenght of the longest sequence during the BLASTn analysis.
+    gb_df : pandas.DataFrame
+        Pandas DataFrame storing metadata of the GenBank files for plotting.
+    cds_df : pandas.DataFrame
+        Pandas DataFrame storing metadata of the GenBank CDS files for plotting.
+    alignments_df : pandas.DataFrame
+        Pandas DataFrame storing metadata of the BLASTn results for plotting.
+    alignments_regions_df : pandas.DataFrame
+        Pandas DataFrame stroing metadata from the homology regions found after BLASTning
+        for plotting.
+    draw_from_button : str
+        Stores the name id of the button that triggered the callback for plotting. This
+        parameter is import to distinguish between the `Draw` button and the rest of
+        buttons used to update the plot. The id for the `Draw` button is `draw-button`.
+    y_separation float
+        Number to plot the sequences in the y-axis. The values to plot in the x-axis are
+        stored in the different Pandas DataFrames.
+    """
 
     def __init__(
         self,
@@ -467,33 +545,37 @@ def plot_homology_regions_with_dataframe(
     return fig
 
 
-def annotate_dna_sequences_using_trace_customdata(
-    figure: Figure, annotate_with: str, padding: int = 10
+def annotate_dna_sequences(
+    fig: Figure,
+    gb_records: DataFrame,
+    longest_sequence: int,
+    number_gb_records: int,
+    annotate_with: str = "accession",
+    y_separation: int = 10,
+    padding: int = 10,
 ) -> Figure:
-    """Annotate dna sequences using trace customdata
+    """Annotate dna sequences using GenBank records DataFrame
 
-    The trace customdata is created when plotting using the plot_dna_sequences function.
     annotate_with options are "accession", "name", "fname".
     """
-    for trace in figure["data"]:
-        if "customdata" not in trace:
-            continue
-        if trace["customdata"] is None:
-            continue
-        if "sequence_info" in trace["customdata"][0].get("type", ""):
-            text = trace["customdata"][0][annotate_with]
-            figure.add_annotation(
-                x=trace["customdata"][0]["longest_sequence"] + padding,
-                xref="x",
-                y=trace["y"][0],
-                name=f"Sequence annotation: {text}",
-                text=text,
-                font=dict(size=18),
-                showarrow=False,
-                xanchor="left",
-                yanchor="middle",
-            )
-    return figure
+    y = y_separation * number_gb_records
+    options = {"accession": "accession", "name": "record_name", "fname": "file_name"}
+    option = options.get(annotate_with, "accession")
+    for _, row in gb_records.iterrows():
+        name = row[option]
+        fig.add_annotation(
+            x=longest_sequence + padding,
+            xref="x",
+            y=y,
+            name=f"Sequence annotation: {name}",
+            text=name,
+            font=dict(size=18),
+            showarrow=False,
+            xanchor="left",
+            yanchor="middle",
+        )
+        y -= y_separation
+    return fig
 
 
 def annotate_top_genes(
@@ -778,18 +860,22 @@ def make_alignments(
     return gb_df, cds_df, alignments_df, regions_df
 
 
-# ====================================================================================== #
-#                                  MAIN FUNCTION GUI                                     #
-# ====================================================================================== #
 def make_figure(plot_parameters: PlotParameters) -> Figure:
-    """Make a multiple sequence alignment plot
+    """Make a multiple sequence alignment plot.
+
+    This funtion works only if plot_parameters is fully populated.
+
+    Parameters
+    ----------
+    plot_parameters : PlotParameters
+        Class that stores all the information for plotting in Dash.
 
     Return
     ------
     Figure : plotly.graph_objects.Figure
     """
-    # Before plotting, we must check the alignments position option to adjust the
-    # coordinates of the sequences and genes.
+    # Before plotting, check if `alignments_position` option is not selected to the
+    # `left` to adjust the coordinates of the sequences and genes accordingly.
     if (
         plot_parameters.draw_from_button == "draw-button"
         and plot_parameters.alignments_position != "left"
@@ -802,17 +888,7 @@ def make_figure(plot_parameters: PlotParameters) -> Figure:
             size_longest_sequence=plot_parameters.longest_sequence,
             position=plot_parameters.alignments_position,
         )
-    else:
-        genbank.adjust_positions_sequences_and_alignments_df_for_plotting(
-            gb_records=plot_parameters.gb_df,
-            cds=plot_parameters.cds_df,
-            alignments=plot_parameters.alignments_df,
-            regions=plot_parameters.alignments_regions_df,
-            size_longest_sequence=plot_parameters.longest_sequence,
-            position=plot_parameters.alignments_position,
-        )
 
-    # = PLOT ALIGNMENTS =================================================================
     # Create a blank figure
     fig = go.Figure()
 
@@ -890,9 +966,15 @@ def make_figure(plot_parameters: PlotParameters) -> Figure:
     if plot_parameters.annotate_genes != "no":
         fig = annotate_genes(fig, plot_parameters)
     # Annotate DNA sequences
-    if (sequence_name := plot_parameters.annotate_sequences) != "no":
-        # fig = annotate_dna_sequences(fig, gb_records, longest_sequence, sequence_name)
-        fig = annotate_dna_sequences_using_trace_customdata(fig, sequence_name)
+    if plot_parameters.annotate_sequences != "no":
+        fig = annotate_dna_sequences(
+            fig=fig,
+            gb_records=plot_parameters.gb_df,
+            longest_sequence=plot_parameters.longest_sequence,
+            number_gb_records=plot_parameters.number_gb_records,
+            annotate_with=plot_parameters.annotate_sequences,
+            y_separation=plot_parameters.y_separation,
+        )
 
     # Plot DNA scale
     fig = plot_scale(
