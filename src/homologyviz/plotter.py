@@ -375,20 +375,17 @@ def plot_line(
     )
 
 
-def plot_dna_sequences_with_dataframe(
+def plot_dna_sequences(
     fig: Figure,
     gb_records: DataFrame,
-    longest_sequence: int,
     y_separation: int = 10,
 ) -> Figure:
-    """Plot DNA sequences"""
+    """Plot DNA sequences using metadata stored in Pandas DataFrame"""
     y_distance = len(gb_records) * y_separation
     for _, row in gb_records.iterrows():
         x1 = row["sequence_start"]
         x2 = row["sequence_end"]
-        accession = row["accession"]
         record_name = row["record_name"]
-        file_name = row["file_name"]
         x_values = np.array([x1, x2])
         y_values = np.array([y_distance, y_distance])
         trace_name = f"Sequence: {record_name}"
@@ -397,21 +394,12 @@ def plot_dna_sequences_with_dataframe(
             x_values,
             y_values,
             name=trace_name,
-            customdata=[
-                {
-                    "type": "sequence_info",
-                    "accession": accession,
-                    "name": record_name,
-                    "fname": file_name,
-                    "longest_sequence": longest_sequence,
-                },
-            ],
         )
         y_distance -= y_separation
     return fig
 
 
-def plot_genes_with_dataframe(
+def plot_genes(
     fig: Figure,
     number_gb_records: int,
     longest_sequence: int,
@@ -419,22 +407,15 @@ def plot_genes_with_dataframe(
     name_from: str = "product",
     y_separation: int = 10,
 ) -> Figure:
-    """Plot arrows representing genes using metadata stored in a pandas DataFrame.
-
-    The customdata has information for annotating the plot dinamically in Dash.
-    """
+    """Plot arrows representing genes using metadata stored in a Pandas DataFrame."""
     # Position of the first DNA sequence in the y axis. Plotting starts at the top.
     y = number_gb_records * y_separation
     # Ratio head_height vs lenght of longest sequence
     ratio = 0.02
     head_height = longest_sequence * ratio
-    # cds_records_groups = cds_records.groupby(["file_number"])
     # Iterate over gb_records dataframe to plot genes.
-    for i, cds_group in cds_records.groupby(["file_number"]):
+    for _, cds_group in cds_records.groupby(["file_number"]):
         for _, row in cds_group.iterrows():
-            file_numer = row["file_number"]
-            cds_number = row["cds_number"]
-            plot_id = f"{file_numer}.{cds_number}"
             x1 = row["start_plot"]
             x2 = row["end_plot"]
             color = row["color"]
@@ -449,24 +430,12 @@ def plot_genes_with_dataframe(
                 y_values,
                 color=color,
                 name=name,
-                customdata=[
-                    {
-                        "type": "gene_info",
-                        "gb_record_number": i[0],
-                        "number_gb_records": number_gb_records,
-                        "x_start": row["start"],
-                        "x_end": row["end"],
-                        "x_start_plot": row["start_plot"],
-                        "x_end_plot": row["end_plot"],
-                        "y": y,
-                        "plot_id": plot_id,
-                    }
-                ],
             )
         y -= y_separation
     return fig
 
 
+# AQUI me quede...
 def plot_homology_regions_with_dataframe(
     fig: Figure,
     alignments_df: DataFrame,
@@ -475,11 +444,12 @@ def plot_homology_regions_with_dataframe(
     homology_padding: float = 1.1,
     colorscale: str = "Greys",
     straight_heights: bool = True,
-    minimum_homology_length: int = 0,
+    minimum_homology_length: int = 1,
     set_colorscale_to_extreme_homologies: bool = False,
     lowest_homology: None | float = None,
     highest_homology: None | float = None,
 ) -> Figure:
+    """Plot homology regions using metadata stored in Pandas DataFrame"""
     # Get length of alignments and add 1
     alignments_len = len(alignments_df) + 1
     # Get the y distance to start plotting at the top of the graph
@@ -675,8 +645,7 @@ def remove_traces_by_name(figure: Figure, name: str) -> dict:
 
 
 def remove_annotations_by_name(figure: Figure, name: str) -> dict:
-    """
-    Remove annotations that have any instance of the str name in
+    """Remove annotations that have any instance of the str name in
     figure.layout['annotations']
     """
     annotations = []
@@ -766,7 +735,55 @@ def change_homoloy_color_traces(
     return figure
 
 
+def change_homoloy_color(
+    fig: Figure,
+    colorscale_name: str,
+    vmin_truncate: float,
+    vmax_truncate: float,
+    set_colorscale_to_extreme_homologies: bool = False,
+    lowest_homology: None | float = None,
+    highest_homology: None | float = None,
+) -> Figure:
+    """Change the Figure's homology color traces
+
+    This function works using the traces' customdata.
+    """
+    # Get new colorscale
+    colorscale = get_truncated_colorscale(
+        colorscale_name=colorscale_name,
+        vmin=vmin_truncate,
+        vmax=vmax_truncate,
+    )
+    for trace in fig["data"]:
+        if "customdata" not in trace:
+            continue
+        if trace["customdata"] is None:
+            continue
+        if "homology_info" in trace["customdata"][0].get("type", ""):
+            print(trace["customdata"][0].get("type", ""))
+            # Get identity information from customdata
+            identity = trace["customdata"][0]["identity"]
+            identity = float(identity)
+            # Sample colorscale with identity value.
+            if set_colorscale_to_extreme_homologies:
+                color = sample_colorscale_setting_lowest_and_highest_homologies(
+                    truncated_colorscale=colorscale,
+                    homology_value=identity,
+                    lowest_homology=lowest_homology,
+                    highest_homology=highest_homology,
+                )
+            else:
+                color = sample_from_truncated_colorscale(
+                    truncated_colorscale=colorscale, homology_value=identity
+                )
+            trace["fillcolor"] = color
+            trace["line"]["color"] = color
+
+    return fig
+
+
 def round_up_to_nearest_significant_digit(number: float) -> int:
+    """Round up a float number to the nearest signifcant digit."""
     # Determine the nearest power of ten (e.g., 1000, 100, 10, etc.)
     power_of_ten = 10 ** math.floor(math.log10(number))
     # Round up to the next multiple of that power
@@ -776,6 +793,7 @@ def round_up_to_nearest_significant_digit(number: float) -> int:
 def plot_scale(
     figure: Figure, length_longest_sequence: int, add_scale: bool = True
 ) -> Figure:
+    """Plot a line representing the scale in base pairs (bp)"""
     scale_length: int = round_up_to_nearest_significant_digit(
         length_longest_sequence / 5
     )
@@ -808,6 +826,7 @@ def plot_scale(
 
 
 def toggle_scale_bar(figure: Figure, show: bool) -> Figure:
+    """Toggle scale bar by adding or removing transparency in the alpha channel."""
     color: str = "rgba(0, 0, 0, 1)" if show else "rgba(0,0,0,0)"
     for trace in figure["data"]:
         if ("name" in trace) and ("Scale trace" in trace["name"]):
@@ -851,7 +870,7 @@ def make_alignments(
     # Run blastn locally to make alignments.
     blast_xml_results = genbank.run_blastn(faa_files, output_folder)
     # Make alignments and regions dataframes from blast results
-    alignments_df, regions_df = genbank.blast_alignments_to_dataframe(blast_xml_results)
+    alignments_df, regions_df = genbank.get_blast_metadata(blast_xml_results)
     # Make GenBank records and coding sequences dataframes
     gb_df, cds_df = genbank.genbank_files_metadata_to_dataframes(input_files)
     # Delete the documents used for genereting BLASTn results.
@@ -863,7 +882,7 @@ def make_alignments(
 def make_figure(plot_parameters: PlotParameters) -> Figure:
     """Make a multiple sequence alignment plot.
 
-    This funtion works only if plot_parameters is fully populated.
+    This funtion only works if plot_parameters is fully populated.
 
     Parameters
     ----------
@@ -930,10 +949,9 @@ def make_figure(plot_parameters: PlotParameters) -> Figure:
     )
 
     # Plot the DNA sequences
-    fig = plot_dna_sequences_with_dataframe(
+    fig = plot_dna_sequences(
         fig=fig,
         gb_records=plot_parameters.gb_df,
-        longest_sequence=plot_parameters.longest_sequence,
         y_separation=plot_parameters.y_separation,
     )
 
@@ -955,7 +973,8 @@ def make_figure(plot_parameters: PlotParameters) -> Figure:
         highest_homology=highest_identity,
     )
 
-    fig = plot_genes_with_dataframe(
+    # Plot genes
+    fig = plot_genes(
         fig=fig,
         number_gb_records=plot_parameters.number_gb_records,
         longest_sequence=plot_parameters.longest_sequence,
@@ -965,6 +984,7 @@ def make_figure(plot_parameters: PlotParameters) -> Figure:
     # Annotate genes
     if plot_parameters.annotate_genes != "no":
         fig = annotate_genes(fig, plot_parameters)
+
     # Annotate DNA sequences
     if plot_parameters.annotate_sequences != "no":
         fig = annotate_dna_sequences(

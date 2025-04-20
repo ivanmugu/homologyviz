@@ -351,6 +351,28 @@ def register_callbacks(app: dash.Dash) -> dash.Dash:
             # Convert the figure_state dictionary into a Figure object
             fig = Figure(data=figure_state["data"], layout=figure_state["layout"])
 
+            # ==== Change annotation to genes ========================================== #
+            # check if user changed use_genes_info_from_state and if user wants to
+            # to annotate genes
+            if (
+                use_genes_info_from_state != dash_parameters.annotate_genes_with
+                and annotate_genes_state != "no"
+            ):
+                # Update dash_parameters.
+                dash_parameters.annotate_genes_with = use_genes_info_from_state
+                # Remove any gene annotations
+                fig = plt.remove_annotations_by_name(fig, "Gene annotation:")
+                # Annotate with the new parameter
+                fig = plt.annotate_genes(fig, dash_parameters)
+            # check if value of annotate_genes_state is different in dash_parameters
+            if annotate_genes_state != dash_parameters.annotate_genes:
+                # change value of dash_parameters -> annotate_genes
+                dash_parameters.annotate_genes = annotate_genes_state
+                # Remove any gene annotations
+                fig = plt.remove_annotations_by_name(fig, "Gene annotation:")
+                # If asked add new annotations
+                if annotate_genes_state != "no":
+                    fig = plt.annotate_genes(fig, dash_parameters)
             # ==== Change annotation to DNA sequences ================================== #
             # check if value of annotate_sequences_state is different in dash_parameters
             if annotate_sequences_state != dash_parameters.annotate_sequences:
@@ -377,15 +399,6 @@ def register_callbacks(app: dash.Dash) -> dash.Dash:
                 fig = plt.toggle_scale_bar(
                     fig, True if scale_bar_state == "yes" else False
                 )
-            # ==== Change annotation to genes ========================================== #
-            # check if value of annotate_genes_state is different in dash_parameters
-            if annotate_genes_state != dash_parameters.annotate_genes:
-                # change value of dash_parameters -> annotate_genes
-                dash_parameters.annotate_genes = annotate_genes_state
-                # Remove any gene annotations
-                fig = plt.remove_annotations_by_name(fig, "Gene annotation:")
-                if annotate_genes_state != "no":
-                    fig = plt.annotate_genes(fig, dash_parameters)
 
             return fig, None, False
 

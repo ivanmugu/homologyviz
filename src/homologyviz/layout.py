@@ -175,23 +175,23 @@ def make_tab_main() -> dbc.Tab:
                     ),
                     dbc.Row(
                         [
-                            dmc.Select(  # Genes info for annotations
-                                id="use-genes-info-from",
-                                label="Genes Info from",
-                                value="gene",
-                                data=[
-                                    {"value": "gene", "label": "CDS Gene"},
-                                    {"value": "product", "label": "CDS Product"},
-                                ],
-                                w=130,
-                                size="sm",
-                                style={"padding": "0px"},
-                            ),
+                            # dmc.Select(  # Genes info for annotations
+                            #     id="use-genes-info-from",
+                            #     label="Genes Info from",
+                            #     value="gene",
+                            #     data=[
+                            #         {"value": "gene", "label": "CDS Gene"},
+                            #         {"value": "product", "label": "CDS Product"},
+                            #     ],
+                            #     w=130,
+                            #     size="sm",
+                            #     style={"padding": "0px"},
+                            # ),
                             dmc.NumberInput(  # Minimun homology lenght to plot
                                 label="Min Homolo Length",
                                 id="minimum-homology-length",
-                                value=0,
-                                min=0,
+                                value=1,
+                                min=1,
                                 step=50,
                                 w=130,
                                 suffix=" bp",
@@ -263,11 +263,11 @@ def make_tab_annotate() -> dbc.Tab:
                         ),
                         className="d-flex justify-content-evenly mt-4 mb-2",
                     ),
-                    dmc.Divider(  # ==== Annotate sequences ============================ #
+                    dmc.Divider(  # ==== Genes info from =============================== #
                         label=html.Span(
                             [
                                 dmc.Text(
-                                    "Annotate Sequences", style={"fontSize": "16px"}
+                                    "Get Genes Info From", style={"fontSize": "16px"}
                                 ),
                             ],
                             className="d-flex align-items-center justify-content-evenly",
@@ -278,13 +278,11 @@ def make_tab_annotate() -> dbc.Tab:
                     dbc.Row(
                         [
                             dmc.Select(
-                                id="annotate-sequences",
-                                value="no",
+                                id="use-genes-info-from",
+                                value="gene",
                                 data=[
-                                    {"value": "no", "label": "No"},
-                                    {"value": "accession", "label": "Accession"},
-                                    {"value": "name", "label": "Sequence name"},
-                                    {"value": "fname", "label": "File name"},
+                                    {"value": "gene", "label": "CDS Gene"},
+                                    {"value": "product", "label": "CDS Product"},
                                 ],
                                 w=150,
                                 size="sm",
@@ -316,6 +314,36 @@ def make_tab_annotate() -> dbc.Tab:
                                         "value": "top-bottom",
                                         "label": "Top and bottom genes",
                                     },
+                                ],
+                                w=150,
+                                size="sm",
+                            ),
+                        ],
+                        className="d-flex justify-content-evenly my-2",
+                        style={"textAlign": "center"},
+                    ),
+                    dmc.Divider(  # ==== Annotate sequences ============================ #
+                        label=html.Span(
+                            [
+                                dmc.Text(
+                                    "Annotate Sequences", style={"fontSize": "16px"}
+                                ),
+                            ],
+                            className="d-flex align-items-center justify-content-evenly",
+                        ),
+                        labelPosition="center",
+                        className="my-2",
+                    ),
+                    dbc.Row(
+                        [
+                            dmc.Select(
+                                id="annotate-sequences",
+                                value="no",
+                                data=[
+                                    {"value": "no", "label": "No"},
+                                    {"value": "accession", "label": "Accession"},
+                                    {"value": "name", "label": "Sequence name"},
+                                    {"value": "fname", "label": "File name"},
                                 ],
                                 w=150,
                                 size="sm",

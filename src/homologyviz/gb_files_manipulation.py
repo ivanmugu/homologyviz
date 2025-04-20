@@ -55,6 +55,8 @@ def make_fasta_files(gb_files: list[Path], output_path: Path) -> list[Path]:
 def run_blastn(faa_files: list[Path], output_path: Path) -> list[Path]:
     """Run blastn locally and create xml result file(s).
 
+    This script compares two or more sequences following the order of the input faa_files
+
     Parameters
     ----------
     faa_files : list[Path]
@@ -277,21 +279,40 @@ def parse_genbank_cds_to_df(
     return df
 
 
-def blast_alignments_to_dataframe(
+def get_blast_metadata(
     xml_alignment_result: list[Path],
-) -> list[DataFrame, DataFrame]:
-    """Store a BLASTn alignments results into Pandas DataFrames.
+) -> tuple[DataFrame, DataFrame]:
+    """Store BLASTn alignments results into Pandas DataFrames.
+
+    This function generates two Pandas DataFrames:
+        1. BLASTn alignment metadata (`alignments_df`).
+        2. Region metadata for matching sequences (`regions_df`).
+
+    Parameters
+    ----------
+    xml_alignment_result : list[Path]
+        List with pahts to xml BLASTn result files.
 
     Return
     ------
-    alignments_df : pandas.DataFrame
-        DataFrame storing BLAST metadata results such as alignments number, query name,
-        hit name, query length, and hit length.
-    regions_df : pandas.DataFrame
-        DataFrame storing the regions that math between two sequences during BLASTing. The
-        metadata includes an alignment number to make a relational database with the
-        alignments_df. For more details of metadata stored in regions_df check the
-        `parse_blast_record` function in the gb_files_manipulation module.
+    tuple[pandas.DataFrame, pandas.DataFrame]
+        alignments_df : pandas.DataFrame
+            DataFrame storing BLAST metadata results such as alignments number, query
+            name, hit name, query length, and hit length.
+
+            Columns:
+                - alignment_number (int): Unique identifier for the alignment
+                - query_name (str): ID of the query sequence
+                - hit_name (str): ID of the subject sequence
+                - query_len (int): Length of the aligned query
+                - hit_len (int): Length of the aligned subject
+
+        regions_df : pandas.DataFrame
+            DataFrame storing the regions that match between two sequences during
+            BLASTing. The metadata includes an alignment number to make a relational
+            database with the `alignments_df`. For more details of metadata stored in
+            regions_df check the `parse_blast_record` function in the
+            gb_files_manipulation module.
     """
     headers = ["alignment_number", "query_name", "hit_name", "query_len", "hit_len"]
     data = dict(
