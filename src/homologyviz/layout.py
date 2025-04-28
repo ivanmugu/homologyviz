@@ -173,35 +173,6 @@ def make_tab_main() -> dbc.Tab:
                         ],
                         className="d-flex justify-content-evenly mt-3 mb-1",
                     ),
-                    dbc.Row(
-                        [
-                            # dmc.Select(  # Genes info for annotations
-                            #     id="use-genes-info-from",
-                            #     label="Genes Info from",
-                            #     value="gene",
-                            #     data=[
-                            #         {"value": "gene", "label": "CDS Gene"},
-                            #         {"value": "product", "label": "CDS Product"},
-                            #     ],
-                            #     w=130,
-                            #     size="sm",
-                            #     style={"padding": "0px"},
-                            # ),
-                            dmc.NumberInput(  # Minimun homology lenght to plot
-                                label="Min Homolo Length",
-                                id="minimum-homology-length",
-                                value=1,
-                                min=1,
-                                step=50,
-                                w=130,
-                                suffix=" bp",
-                                size="sm",
-                                style={"padding": "0px"},
-                            ),
-                        ],
-                        className="d-flex justify-content-evenly my-2",
-                        style={"textAlign": "center"},
-                    ),
                     # dbc.Row(  # homology length and homology lines styles
                     #     [
                     #         dmc.NumberInput(
@@ -240,11 +211,11 @@ def make_tab_main() -> dbc.Tab:
     return tab_main
 
 
-def make_tab_annotate() -> dbc.Tab:
-    """Make tab Annotate."""
-    tab_annotate = dbc.Tab(
-        label="Annotate",
-        tab_id="tab-annotate",
+def make_tab_view() -> dbc.Tab:
+    """Make tab view."""
+    tab_view = dbc.Tab(
+        label="View",
+        tab_id="tab-view",
         label_style=TAB_LABEL_STYLE,
         children=[
             dbc.Row(
@@ -352,6 +323,33 @@ def make_tab_annotate() -> dbc.Tab:
                         className="d-flex justify-content-evenly my-2",
                         style={"textAlign": "center"},
                     ),
+                    dmc.Divider(  # ====  ============================ #
+                        label=html.Span(
+                            [
+                                dmc.Text(
+                                    "Min Homolog Length", style={"fontSize": "16px"}
+                                ),
+                            ],
+                            className="d-flex align-items-center justify-content-evenly",
+                        ),
+                        labelPosition="center",
+                        className="my-2",
+                    ),
+                    dbc.Row(
+                        [
+                            dmc.NumberInput(  # Minimun homology lenght to plot
+                                id="minimum-homology-length",
+                                value=100,
+                                min=1,
+                                step=50,
+                                w=150,
+                                suffix=" bp",
+                                size="sm",
+                            ),
+                        ],
+                        className="d-flex justify-content-evenly my-2",
+                        style={"textAlign": "center"},
+                    ),
                     dmc.Divider(  # ==== Include scale bar ============================= #
                         label=html.Span(
                             [
@@ -385,7 +383,7 @@ def make_tab_annotate() -> dbc.Tab:
         ],
         style={"margin": "5px"},
     )
-    return tab_annotate
+    return tab_view
 
 
 def make_tab_edit() -> dbc.Tab:
@@ -735,7 +733,7 @@ def create_layout(app: Dash) -> Dash:
                                 dbc.Tabs(
                                     [
                                         make_tab_main(),
-                                        make_tab_annotate(),
+                                        make_tab_view(),
                                         make_tab_edit(),
                                         make_tab_save(),
                                     ],

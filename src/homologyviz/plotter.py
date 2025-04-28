@@ -332,7 +332,8 @@ def plot_polygon(
     y_values: list,
     color: str = "blue",
     name: str = "",
-    customdata: list = [{}],
+    customdata: list = [],
+    visible: bool = True,
 ) -> None:
     """Plot polygon representing genes or homology regions"""
     fig.add_trace(
@@ -348,6 +349,7 @@ def plot_polygon(
             customdata=customdata,
             hoverlabel=dict(font_size=14),
             hovertemplate="%{text}<extra></extra>",
+            visible=visible,
         )
     )
 
@@ -357,7 +359,7 @@ def plot_line(
     x_values: list,
     y_values: list,
     name: str | None = None,
-    customdata: list = [{}],
+    customdata: list = [],
     color: str = "black",
 ) -> None:
     """Plot line representing DNA sequences"""
@@ -435,7 +437,6 @@ def plot_genes(
     return fig
 
 
-# AQUI me quede...
 def plot_homology_regions_with_dataframe(
     fig: Figure,
     alignments_df: DataFrame,
@@ -469,7 +470,9 @@ def plot_homology_regions_with_dataframe(
             homology_length = x2 - x1
             # If homology length is less or equalts to the minimun required, ignore it
             if homology_length <= minimum_homology_length:
-                continue
+                visible = False
+            else:
+                visible = True
             # If user requested straight lines convert coordinates to np.array
             if straight_heights:
                 xpoints = np.array([x1, x2, x3, x4, x1])
@@ -496,20 +499,15 @@ def plot_homology_regions_with_dataframe(
                     truncated_colorscale=colorscale,
                     homology_value=homology,
                 )
-            # Plot the homology region
+            customdata = ["identity", homology, homology_length]
             plot_polygon(
                 fig,
                 xpoints,
                 ypoints,
                 color=color,
                 name=f"Identity: {homology*100:.2f}%",
-                customdata=[
-                    {
-                        "type": "homology_info",
-                        "identity": homology,
-                        "homology_length": homology_length,
-                    },
-                ],
+                customdata=customdata,
+                visible=visible,
             )
         y_distances -= y_separation
     return fig
@@ -644,6 +642,24 @@ def remove_traces_by_name(figure: Figure, name: str) -> dict:
     return figure
 
 
+def hide_homology(figure: Figure, min_homology: int) -> dict:
+    """Hide homology regions with equal or less value to min_homology
+
+    This function compares min_homology with the homology length stored in customdata.
+    The structure of customdat is:
+        [ identity: str, identity_value: float, homology_length: int ]
+    """
+    for trace in figure["data"]:
+        if trace["customdata"] is not None:
+            if "identity" in trace["customdata"]:
+                homology_length = int(trace["customdata"][2])
+                if homology_length <= min_homology:
+                    trace.visible = False
+                if homology_length > min_homology:
+                    trace.visible = True
+    return figure
+
+
 def remove_annotations_by_name(figure: Figure, name: str) -> dict:
     """Remove annotations that have any instance of the str name in
     figure.layout['annotations']
@@ -700,6 +716,8 @@ def change_homoloy_color_traces(
     """Change the Figure's homology color traces
 
     This function works using the traces' customdata.
+    Structure of homology regions customdata:
+        [ identity: str, identity_value: float, homology_length: int ]
     """
     # Get new colorscale
     colorscale = get_truncated_colorscale(
@@ -712,10 +730,9 @@ def change_homoloy_color_traces(
             continue
         if trace["customdata"] is None:
             continue
-        if "homology_info" in trace["customdata"][0].get("type", ""):
-            print(trace["customdata"][0].get("type", ""))
+        if "identity" in trace["customdata"]:
             # Get identity information from customdata
-            identity = trace["customdata"][0]["identity"]
+            identity = trace["customdata"][1]
             identity = float(identity)
             # Sample colorscale with identity value.
             if set_colorscale_to_extreme_homologies:

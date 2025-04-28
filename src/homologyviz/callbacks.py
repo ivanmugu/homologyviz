@@ -181,7 +181,7 @@ def register_callbacks(app: dash.Dash) -> dash.Dash:
         range_slider_state,  # state range slider for color scale
         align_plot_state,  # state align plot
         # homology_lines_state,  # state homology lines
-        minimum_homology_length,  # state miminum homology length
+        minimum_homology_length_state,  # state miminum homology length
         is_set_to_extreme_homologies,  # state button colorscale range
         annotate_sequences_state,  # state annotate sequences
         annotate_genes_state,  # state annotate sequences
@@ -242,11 +242,9 @@ def register_callbacks(app: dash.Dash) -> dash.Dash:
             dash_parameters.annotate_sequences = annotate_sequences_state
             dash_parameters.annotate_genes = annotate_genes_state
             dash_parameters.annotate_genes_with = use_genes_info_from_state
-            print("annotate genes info from:")
-            print(dash_parameters.annotate_genes_with)
             # For now set it to "straight". Change it after fixing the bezier storage data
             dash_parameters.straight_homology_regions = "straight"
-            dash_parameters.minimum_homology_length = minimum_homology_length
+            dash_parameters.minimum_homology_length = minimum_homology_length_state
             dash_parameters.add_scale_bar = scale_bar_state
             dash_parameters.selected_traces = []
 
@@ -272,6 +270,9 @@ def register_callbacks(app: dash.Dash) -> dash.Dash:
         # ============================================================================== #
         # = Change homology color and colorscale bar legend = #
         if button_id == "change-homology-color-button":
+            # If color_scale is different, update dash_paremeters.identity_color
+            if color_scale_state != dash_parameters.identity_color:
+                dash_parameters.identity_color = color_scale_state
             # Change homology color traces
             fig = plt.change_homoloy_color_traces(
                 figure=figure_state,
@@ -345,13 +346,13 @@ def register_callbacks(app: dash.Dash) -> dash.Dash:
                 return fig, None, False
 
         # ============================================================================== #
-        #                                ANNOTATE TAB                                    #
+        #                                  VIEW TAB                                      #
         # ============================================================================== #
         if figure_state and button_id == "update-annotations":
             # Convert the figure_state dictionary into a Figure object
             fig = Figure(data=figure_state["data"], layout=figure_state["layout"])
 
-            # ==== Change annotation to genes ========================================== #
+            # ==== Genes Annotations =================================================== #
             # check if user changed use_genes_info_from_state and if user wants to
             # to annotate genes
             if (
@@ -373,7 +374,7 @@ def register_callbacks(app: dash.Dash) -> dash.Dash:
                 # If asked add new annotations
                 if annotate_genes_state != "no":
                     fig = plt.annotate_genes(fig, dash_parameters)
-            # ==== Change annotation to DNA sequences ================================== #
+            # ==== DNA Sequences Annotations =========================================== #
             # check if value of annotate_sequences_state is different in dash_parameters
             if annotate_sequences_state != dash_parameters.annotate_sequences:
                 # Change value of dash_parameters -> annotate_sequences
@@ -399,6 +400,13 @@ def register_callbacks(app: dash.Dash) -> dash.Dash:
                 fig = plt.toggle_scale_bar(
                     fig, True if scale_bar_state == "yes" else False
                 )
+            # ==== Minimum Homology Length ============================================= #
+            # check if minimum homology length is different from dash_parameters
+            if minimum_homology_length_state != dash_parameters.minimum_homology_length:
+                # change value of dash_parameters -> minimum_homology_length
+                dash_parameters.minimum_homology_length = minimum_homology_length_state
+                # Update homology regions.
+                fig = plt.hide_homology(fig, int(minimum_homology_length_state))
 
             return fig, None, False
 
