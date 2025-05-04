@@ -1014,9 +1014,10 @@ def make_figure(plot_parameters: PlotParameters) -> Figure:
         )
 
     # Plot DNA scale
-    fig = plot_scale(
-        fig, plot_parameters.longest_sequence, plot_parameters.add_scale_bar
-    )
+    if plot_parameters.add_scale_bar == "yes":
+        fig = plot_scale(
+            fig, plot_parameters.longest_sequence, plot_parameters.add_scale_bar
+        )
 
     # Plot colorscale legend
     fig = plot_colorbar_legend(

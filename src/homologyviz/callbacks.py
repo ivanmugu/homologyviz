@@ -111,6 +111,7 @@ def register_callbacks(app: dash.Dash) -> dash.Dash:
     ):
         ctx = dash.callback_context
         ctx_id = ctx.triggered[0]["prop_id"].split(".")[0]
+        print(f"clicked from update file table: {ctx_id}")
         # Update table with uploaded files.
         if (ctx_id == "upload") and filenames and contents:
             new_rows = []
@@ -143,7 +144,6 @@ def register_callbacks(app: dash.Dash) -> dash.Dash:
             Input("change-homology-color-button", "n_clicks"),
             Input("change-gene-color-button", "n_clicks"),
             Input("update-annotations", "n_clicks"),
-            Input("update-align-sequences-button", "n_clicks"),
         ],
         [
             State("files-table", "virtualRowData"),
@@ -171,7 +171,6 @@ def register_callbacks(app: dash.Dash) -> dash.Dash:
         change_homology_color_button_clicks,  # input selected color scale value
         change_gene_color_button_clicks,  # input selected color value
         update_annotations_clicks,  # input to update annotate sequences
-        update_align_sequences_clicks,  # input to update annotate sequences
         virtual,  # state of table with path to GenBank files
         active_tab,  # state activet tab
         figure_state,  # state output Figure object
@@ -195,9 +194,11 @@ def register_callbacks(app: dash.Dash) -> dash.Dash:
         The Output to Plot—clickData to None in all the returns allows selecting and
         deselecting traces in the plot.
         """
+        print("no se que esta pasando en main_plot!!!!")
         # Use context to find the button that triggered the callback.
         ctx = dash.callback_context
         button_id = ctx.triggered[0]["prop_id"].split(".")[0]
+        print(f"button_id: {button_id}")
 
         # ============================================================================== #
         #                             MAIN TAB -> Plot                                   #
@@ -207,7 +208,7 @@ def register_callbacks(app: dash.Dash) -> dash.Dash:
             # Store all the metadata for plotting into the dash_parameters object. The
             # dash_parameters object is a PlotParameters class declared at the top of
             # the `create_dash_app` function
-
+            print("clicking draw-button")
             # Drawing plot from draw-button
             dash_parameters.draw_from_button = button_id
 
@@ -336,21 +337,20 @@ def register_callbacks(app: dash.Dash) -> dash.Dash:
             fig = plt.make_selection_effect(figure_state, curve_number)
             return fig, None, False
 
-        # ==== Align sequences in the plot ============================================= #
-        if button_id == "update-align-sequences-button":
-            if align_plot_state != dash_parameters.alignments_position:
-                # Change the value of dash_parameters -> alignments_position
-                dash_parameters.alignments_position = align_plot_state
-                # Make figure and get lowest and highest identities
-                fig = plt.make_figure(dash_parameters)
-                return fig, None, False
-
         # ============================================================================== #
         #                                  VIEW TAB                                      #
         # ============================================================================== #
         if figure_state and button_id == "update-annotations":
-            # Convert the figure_state dictionary into a Figure object
-            fig = Figure(data=figure_state["data"], layout=figure_state["layout"])
+            # ==== Align sequences in the plot ========================================= #
+            # Check if user wants to change the plot position
+            if align_plot_state != dash_parameters.alignments_position:
+                # Change the value of dash_parameters -> alignments_position
+                dash_parameters.alignments_position = align_plot_state
+                # Make figure with new plot position
+                fig = plt.make_figure(dash_parameters)
+            # Otherwise, convert figure_state dictionary into a Figure object
+            else:
+                fig = Figure(data=figure_state["data"], layout=figure_state["layout"])
 
             # ==== Genes Annotations =================================================== #
             # check if user changed use_genes_info_from_state and if user wants to
@@ -517,6 +517,7 @@ def register_callbacks(app: dash.Dash) -> dash.Dash:
         prevent_initial_call=True,
     )
     def reset_page(n_clicks):
+        print("clicked Reset and I am reseting...")
         if n_clicks:
             # Return the current URL to trigger a reload
             return "/"
