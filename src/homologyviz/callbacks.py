@@ -26,6 +26,10 @@ from plotly.graph_objects import Figure
 from homologyviz import plotter as plt
 from homologyviz.gb_files_manipulation import get_longest_sequence_dataframe
 
+# import logging
+# logging.basicConfig(level=logging.INFO)
+# logger = logging.getLogger(__name__)
+
 
 class HeartBeatsParameters:
     """Parameters to monitor heart beats of the Dash app.
@@ -81,6 +85,45 @@ def save_uploaded_file(file_name, content, temp_folder_path: Path) -> str:
         f.write(decoded_data)
     # Dash doesn't like Path; hence, we need to cast Path to str.
     return str(output_path)
+
+
+# def update_dash_parameters(dash_parameters: plt.PlotParameters) -> plt.PlotParameters:
+#     """Check user input to update the metadata stored at the PlotParameters class."""
+#     # Store input_files and output_folder Paths in dash_parameters
+#     dash_parameters.input_files = input_files
+#     dash_parameters.output_folder = output_folder
+#     # Save number of files
+#     dash_parameters.number_gb_records = len(input_files)
+#     # Make alignments
+#     gb_df, cds_df, alignments_df, regions_df = plt.make_alignments(
+#         input_files, output_folder
+#     )
+#     # Add alignments to dash_parameters
+#     dash_parameters.gb_df = gb_df
+#     dash_parameters.cds_df = cds_df
+#     dash_parameters.alignments_df = alignments_df
+#     dash_parameters.alignments_regions_df = regions_df
+#     # Find longest sequence
+#     dash_parameters.longest_sequence = get_longest_sequence_dataframe(gb_df)
+
+#     # Store the rest of information provided by the user for plotting
+#     dash_parameters.alignments_position = align_plot_state
+#     dash_parameters.identity_color = color_scale_state
+#     dash_parameters.colorscale_vmin = range_slider_state[0] / 100
+#     dash_parameters.colorscale_vmax = range_slider_state[1] / 100
+#     dash_parameters.set_colorscale_to_extreme_homologies = is_set_to_extreme_homologies
+#     dash_parameters.annotate_sequences = annotate_sequences_state
+#     dash_parameters.annotate_genes = annotate_genes_state
+#     dash_parameters.annotate_genes_with = use_genes_info_from_state
+#     # For now set it to "straight". Change it after fixing the bezier storage data
+#     dash_parameters.straight_homology_regions = "straight"
+#     dash_parameters.minimum_homology_length = minimum_homology_length_state
+#     dash_parameters.add_scale_bar = scale_bar_state
+#     dash_parameters.selected_traces = []
+
+#     # Set separation of sequences in the Y axis
+#     dash_parameters.y_separation = 10
+#     pass
 
 
 def register_callbacks(app: dash.Dash) -> dash.Dash:
@@ -156,7 +199,7 @@ def register_callbacks(app: dash.Dash) -> dash.Dash:
             State("align-plot", "value"),
             # State("homology-lines", "value"),
             State("minimum-homology-length", "value"),
-            State("is_set_to_extreme_homologies", "data"),
+            State("is-set-to-extreme-homologies", "data"),
             State("annotate-sequences", "value"),
             State("annotate-genes", "value"),
             State("scale-bar", "value"),
@@ -199,6 +242,8 @@ def register_callbacks(app: dash.Dash) -> dash.Dash:
         ctx = dash.callback_context
         button_id = ctx.triggered[0]["prop_id"].split(".")[0]
         print(f"button_id: {button_id}")
+
+        # Update metadata stored at dash_parameters
 
         # ============================================================================== #
         #                             MAIN TAB -> Plot                                   #
@@ -420,14 +465,13 @@ def register_callbacks(app: dash.Dash) -> dash.Dash:
             Output("change-gene-color-button", "disabled"),
             Output("change-homology-color-button", "disabled"),
             Output("select-change-color-button", "disabled"),
-            Output("update-align-sequences-button", "disabled"),
         ],
         Input("plot", "figure"),
     )
-    def toggle_update_buttons(figure) -> bool:
+    def toggle_update_buttons(figure) -> list[bool]:
         if figure and figure.get("data", []):
-            return [False] * 6
-        return [True] * 6
+            return [False] * 5
+        return [True] * 5
 
     # ==== activate Draw button when files in upload table ============================= #
     @app.callback(
@@ -465,7 +509,7 @@ def register_callbacks(app: dash.Dash) -> dash.Dash:
             Output("extreme-homologies-button", "style"),
             Output("truncate-colorscale-button", "variant"),
             Output("truncate-colorscale-button", "style"),
-            Output("is_set_to_extreme_homologies", "data"),
+            Output("is-set-to-extreme-homologies", "data"),
         ],
         [
             Input("extreme-homologies-button", "n_clicks"),

@@ -365,7 +365,7 @@ def make_tab_edit() -> dbc.Tab:
                                 color="#3a7ebf",
                                 size="md",
                                 variant="outline",
-                                disabled=True,
+                                # disabled=True,
                                 style={"fontSize": "12px", "width": "200px"},
                             ),
                             dcc.Store(id="select-button-state-store", data=False),
@@ -468,13 +468,13 @@ def make_tab_edit() -> dbc.Tab:
                                     },
                                 ),
                                 dcc.Store(
-                                    id="is_set_to_extreme_homologies",
+                                    id="is-set-to-extreme-homologies",
                                     data=False,
                                 ),
                             ],
                             style={
                                 "padding": "0px",
-                                "borderWidth": "solid",
+                                "borderWidth": "1px",
                                 "borderStyle": "solid",
                                 "borderColor": "#424242",
                                 "borderRadius": "5px",
@@ -628,7 +628,7 @@ def create_layout(app: Dash) -> Dash:
                         children=[
                             html.Img(
                                 src="/assets/logo.png",
-                                className="mx-auto my-2 d-block text-white fw-bold text-center",
+                                className="mx-auto my-4 d-block text-white fw-bold text-center",
                                 alt="HomologyViz",
                                 style={
                                     "height": "40px",
@@ -647,7 +647,7 @@ def create_layout(app: Dash) -> Dash:
                                 ),
                                 className="mt-1",
                                 style={
-                                    "height": "90%",
+                                    "height": "85%",
                                     "width": "100%",
                                     "overflow": "auto",
                                 },
@@ -655,11 +655,12 @@ def create_layout(app: Dash) -> Dash:
                         ],
                         style={
                             "backgroundColor": "#242424",
-                            "height": "96vh",
+                            "height": "95vh",
                             "overflow": "auto",
                         },
                     ),
-                    span=3,
+                    span="auto",
+                    style={"maxWidth": "340px", "minWidth": "200px"},
                 ),
                 dmc.GridCol(
                     html.Div(  # ==== GRAPH ============================================ #
