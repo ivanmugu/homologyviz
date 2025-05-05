@@ -11,6 +11,7 @@ import dash_ag_grid as dag
 from dash import Dash, html, dcc
 import dash_bootstrap_components as dbc
 import dash_mantine_components as dmc
+from dash.development.base_component import Component
 from dash_iconify import DashIconify
 import plotly.express as px
 
@@ -19,6 +20,20 @@ TAB_LABEL_STYLE = {
     "fontSize": "14px",
     "padding": "0.6rem 1rem",
 }
+
+
+def make_dmc_select(**kwargs) -> Component:
+    return dmc.Select(
+        w=200,
+        size="md",
+        style={"padding": "0"},
+        styles={
+            "input": {"fontSize": "14px"},
+            "label": {"fontSize": "14px"},
+            "option": {"fontSize": "14px"},
+        },
+        **kwargs,
+    )
 
 
 def list_sequential_color_scales() -> list[str]:
@@ -50,7 +65,7 @@ def make_tab_main() -> dbc.Tab:
                             variant="outline",
                             size="md",
                             style={
-                                "fontSize": "12px",
+                                "fontSize": "14px",
                                 "borderStyle": "dashed",
                                 "borderWidth": "2px",
                                 "width": "100%",
@@ -88,7 +103,7 @@ def make_tab_main() -> dbc.Tab:
                                 style={
                                     "height": "250px",
                                     "width": "100%",
-                                    "fontSize": "12px",
+                                    "fontSize": "14px",
                                 },
                                 className="ag-theme-alpine-dark",
                             ),
@@ -115,10 +130,7 @@ def make_tab_main() -> dbc.Tab:
                                 ),
                                 color="#3a7ebf",
                                 size="md",
-                                style={
-                                    "fontSize": "12px",
-                                    "width": "250px",
-                                },
+                                style={"fontSize": "14px", "width": "200px"},
                             ),
                         ],
                         className="d-flex justify-content-evenly mb-2",
@@ -134,7 +146,7 @@ def make_tab_main() -> dbc.Tab:
                                 ),
                                 color="#3a7ebf",
                                 size="md",
-                                style={"fontSize": "12px", "width": "250px"},
+                                style={"fontSize": "14px", "width": "200px"},
                             ),
                         ],
                         className="d-flex justify-content-evenly mb-2",
@@ -150,7 +162,7 @@ def make_tab_main() -> dbc.Tab:
                                 ),
                                 color="#3a7ebf",
                                 size="md",
-                                style={"fontSize": "12px", "width": "250px"},
+                                style={"fontSize": "14px", "width": "200px"},
                             ),
                         ],
                         className="d-flex justify-content-evenly mb-2",
@@ -158,7 +170,7 @@ def make_tab_main() -> dbc.Tab:
                     dbc.Row(
                         [
                             dmc.Button(  # DRAW PLOT
-                                "Make Alignments & Plot",
+                                "Plot",
                                 id="draw-button",
                                 leftSection=DashIconify(
                                     icon="stash:pencil-writing-light",
@@ -166,7 +178,7 @@ def make_tab_main() -> dbc.Tab:
                                 ),
                                 color="#b303b3",
                                 size="md",
-                                style={"fontSize": "12px", "width": "250px"},
+                                style={"fontSize": "14px", "width": "200px"},
                             ),
                         ],
                         className="d-flex justify-content-evenly mb-2",
@@ -189,122 +201,109 @@ def make_tab_view() -> dbc.Tab:
         children=[
             dbc.Row(
                 [
-                    dbc.Row(  # ==== This update button controls the whole tab ========= #
+                    dbc.Row(
+                        make_dmc_select(
+                            label="Align Plot",
+                            id="align-plot",
+                            value="left",
+                            data=[
+                                {"value": "left", "label": "Left"},
+                                {"value": "center", "label": "Center"},
+                                {"value": "right", "label": "Right"},
+                            ],
+                        ),
+                        className="d-flex justify-content-evenly my-1",
+                    ),
+                    dbc.Row(
+                        make_dmc_select(
+                            label="Get Genes Info From",
+                            id="use-genes-info-from",
+                            value="gene",
+                            data=[
+                                {"value": "gene", "label": "CDS Gene"},
+                                {"value": "product", "label": "CDS Product"},
+                            ],
+                        ),
+                        className="d-flex justify-content-evenly mb-1",
+                    ),
+                    dbc.Row(
+                        make_dmc_select(
+                            id="annotate-genes",
+                            label="Annotate Genes",
+                            value="no",
+                            data=[
+                                {"value": "no", "label": "No"},
+                                {"value": "top", "label": "Top genes"},
+                                {"value": "bottom", "label": "Bottom genes"},
+                                {
+                                    "value": "top-bottom",
+                                    "label": "Top and bottom genes",
+                                },
+                            ],
+                        ),
+                        className="d-flex justify-content-evenly mb-1",
+                    ),
+                    dbc.Row(
+                        make_dmc_select(
+                            id="annotate-sequences",
+                            label="Annotate Sequences",
+                            value="no",
+                            data=[
+                                {"value": "no", "label": "No"},
+                                {"value": "accession", "label": "Accession"},
+                                {"value": "name", "label": "Sequence name"},
+                                {"value": "fname", "label": "File name"},
+                            ],
+                        ),
+                        className="d-flex justify-content-evenly mb-1",
+                    ),
+                    dbc.Row(
+                        make_dmc_select(
+                            id="scale-bar",
+                            label="Scale Bar",
+                            value="yes",
+                            data=[
+                                {"value": "no", "label": "No"},
+                                {"value": "yes", "label": "Yes"},
+                            ],
+                        ),
+                        className="d-flex justify-content-evenly mb-1",
+                    ),
+                    dbc.Row(
+                        dmc.NumberInput(  # Minimun homology lenght to plot
+                            id="minimum-homology-length",
+                            label="Min Homology Length",
+                            value=100,
+                            min=1,
+                            step=50,
+                            w=200,
+                            suffix=" bp",
+                            size="md",
+                            style={"padding": "0"},
+                            styles={
+                                "input": {"fontSize": "14px"},
+                                "label": {"fontSize": "14px"},
+                            },
+                        ),
+                        className="d-flex justify-content-evenly mb-1",
+                    ),
+                    dbc.Row(
                         dmc.Button(
-                            "Update",
+                            "Update View",
                             id="update-annotations",
                             leftSection=DashIconify(
                                 icon="radix-icons:update",
                                 width=25,
                             ),
-                            color="#3a7ebf",
-                            size="sm",
-                            style={"fontSize": "12px", "width": "180px"},
+                            color="#b303b3",
+                            size="md",
+                            style={
+                                "fontSize": "14px",
+                                "width": "200px",
+                                "padding": "0",
+                            },
                         ),
-                        className="d-flex justify-content-evenly mt-4 mb-2",
-                    ),
-                    dbc.Row(
-                        [
-                            dmc.Select(
-                                label="Align Plot",
-                                id="align-plot",
-                                value="left",
-                                data=[
-                                    {"value": "left", "label": "Left"},
-                                    {"value": "center", "label": "Center"},
-                                    {"value": "right", "label": "Right"},
-                                ],
-                                w=180,
-                                size="sm",
-                            ),
-                        ],
-                        className="d-flex justify-content-evenly my-2",
-                    ),
-                    dbc.Row(
-                        [
-                            dmc.Select(
-                                label="Get Genes Info From",
-                                id="use-genes-info-from",
-                                value="gene",
-                                data=[
-                                    {"value": "gene", "label": "CDS Gene"},
-                                    {"value": "product", "label": "CDS Product"},
-                                ],
-                                w=180,
-                                size="sm",
-                            ),
-                        ],
-                        className="d-flex justify-content-evenly my-2",
-                    ),
-                    dbc.Row(
-                        [
-                            dmc.Select(
-                                id="annotate-genes",
-                                label="Annotate Genes",
-                                value="no",
-                                data=[
-                                    {"value": "no", "label": "No"},
-                                    {"value": "top", "label": "Top genes"},
-                                    {"value": "bottom", "label": "Bottom genes"},
-                                    {
-                                        "value": "top-bottom",
-                                        "label": "Top and bottom genes",
-                                    },
-                                ],
-                                w=180,
-                                size="sm",
-                            ),
-                        ],
-                        className="d-flex justify-content-evenly my-2",
-                    ),
-                    dbc.Row(
-                        [
-                            dmc.Select(
-                                id="annotate-sequences",
-                                label="Annotate Sequences",
-                                value="no",
-                                data=[
-                                    {"value": "no", "label": "No"},
-                                    {"value": "accession", "label": "Accession"},
-                                    {"value": "name", "label": "Sequence name"},
-                                    {"value": "fname", "label": "File name"},
-                                ],
-                                w=180,
-                                size="sm",
-                            ),
-                        ],
-                        className="d-flex justify-content-evenly my-2",
-                    ),
-                    dbc.Row(
-                        [
-                            dmc.NumberInput(  # Minimun homology lenght to plot
-                                id="minimum-homology-length",
-                                label="Min Homology Length",
-                                value=100,
-                                min=1,
-                                step=50,
-                                w=180,
-                                suffix=" bp",
-                                size="sm",
-                            ),
-                        ],
-                        className="d-flex justify-content-evenly my-2",
-                    ),
-                    dbc.Row(
-                        [
-                            dmc.Select(
-                                id="scale-bar",
-                                label="Scale Bar",
-                                value="yes",
-                                data=[
-                                    {"value": "no", "label": "No"},
-                                    {"value": "yes", "label": "Yes"},
-                                ],
-                                w=180,
-                                size="sm",
-                            ),
-                        ],
-                        className="d-flex justify-content-evenly mt-1",
+                        className="d-flex justify-content-evenly mt-2",
                     ),
                 ],
                 className="d-flex justify-content-center mt-2",
@@ -325,29 +324,12 @@ def make_tab_edit() -> dbc.Tab:
         children=[
             dbc.Row(  # ==== SELECT AND CHANGE COLOR SECTION =========================== #
                 [
-                    dmc.Divider(
-                        label=html.Span(
-                            dmc.Text("Colors", style={"fontSize": "16px"}),
-                            style={"display": "flex", "alignItems": "center"},
-                        ),
-                        labelPosition="center",
-                        className="mt-3 mb-2",
-                    ),
+                    dmc.Divider(className="mt-2 mb-1"),
                     dbc.Row(
                         [
-                            dmc.Button(
-                                "Change",
-                                id="change-gene-color-button",
-                                leftSection=DashIconify(
-                                    icon="oui:color",
-                                    width=20,
-                                ),
-                                color="#3a7ebf",
-                                size="sm",
-                                style={"fontSize": "12px", "width": "100px"},
-                            ),
                             dmc.ColorInput(
                                 id="color-input",
+                                label="Edit Color of Selected Items",
                                 value="rgb(0, 255, 255)",
                                 w=200,
                                 format="rgb",
@@ -361,7 +343,12 @@ def make_tab_edit() -> dbc.Tab:
                                     "rgb(151,59,255)",
                                     "rgb(0,0,0)",
                                 ],
-                                size="sm",
+                                size="md",
+                                style={"padding": "0"},
+                                styles={
+                                    "input": {"fontSize": "14px"},
+                                    "label": {"fontSize": "14px"},
+                                },
                             ),
                         ],
                         className="d-flex justify-content-evenly my-2",
@@ -369,21 +356,37 @@ def make_tab_edit() -> dbc.Tab:
                     dbc.Row(
                         [
                             dmc.Button(
-                                "Select",
+                                "Select Items",
                                 id="select-change-color-button",
                                 leftSection=DashIconify(
                                     icon="material-symbols-light:arrow-selector-tool-outline",
                                     width=30,
                                 ),
                                 color="#3a7ebf",
-                                size="sm",
+                                size="md",
                                 variant="outline",
                                 disabled=True,
-                                style={"fontSize": "12px", "width": "100px"},
+                                style={"fontSize": "12px", "width": "200px"},
                             ),
                             dcc.Store(id="select-button-state-store", data=False),
                         ],
-                        className="d-flex justify-content-evenly my-2",
+                        className="d-flex justify-content-evenly mb-2",
+                    ),
+                    dbc.Row(
+                        [
+                            dmc.Button(
+                                "Change Color",
+                                id="change-gene-color-button",
+                                leftSection=DashIconify(
+                                    icon="oui:color",
+                                    width=20,
+                                ),
+                                color="#b303b3",
+                                size="md",
+                                style={"fontSize": "12px", "width": "200px"},
+                            ),
+                        ],
+                        className="d-flex justify-content-evenly mb-2",
                     ),
                 ],
                 className="d-flex justify-content-center my-1",
@@ -391,86 +394,15 @@ def make_tab_edit() -> dbc.Tab:
             ),
             dbc.Row(  # ==== SELECT COLORMAP FOR HOMOLOGY REGIONS ====================== #
                 [
-                    dmc.Divider(
-                        label=html.Span(
-                            dmc.Text(
-                                "Homology Regions Colormap",
-                                style={"fontSize": "16px"},
-                            ),
-                            style={"display": "flex", "alignItems": "center"},
+                    dmc.Divider(className="my-1"),
+                    dbc.Row(
+                        make_dmc_select(
+                            id="color-scale",
+                            label="Change Colormap of Homologies",
+                            value="Greys",
+                            data=list_sequential_color_scales(),
                         ),
-                        labelPosition="center",
-                        className="mt-2 mb-2",
-                    ),
-                    dbc.Row(
-                        [
-                            dmc.Button(
-                                "Update",
-                                id="change-homology-color-button",
-                                leftSection=DashIconify(
-                                    icon="radix-icons:update",
-                                    width=25,
-                                ),
-                                color="#3a7ebf",
-                                size="sm",
-                                style={"fontSize": "12px", "width": "100px"},
-                            ),
-                            dmc.Select(
-                                id="color-scale",
-                                value="Greys",
-                                data=list_sequential_color_scales(),
-                                w=140,
-                                size="sm",
-                                style={"padding": "0"},
-                            ),
-                        ],
-                        className="d-flex justify-content-evenly mt-2 mb-1",
-                    ),
-                    dbc.Row(
-                        "Truncate Colormap or Set Colormap to Extreme Homologies",
-                        className="d-flex justify-content-center text-center mt-2 mb-0",
-                        style={"fontSize": "14px"},
-                    ),
-                    dbc.Row(
-                        dmc.ButtonGroup(
-                            [
-                                dmc.Button(
-                                    "Truncate",
-                                    id="truncate-colorscale-button",
-                                    variant="filled",
-                                    size="sm",
-                                    style={
-                                        "width": "280px",
-                                        "padding": "1px",
-                                        "pointer-events": "none",
-                                    },
-                                ),
-                                dmc.Button(
-                                    "Extreme Homologies",
-                                    id="extreme-homologies-button",
-                                    variant="subtle",
-                                    size="sm",
-                                    style={
-                                        "width": "280px",
-                                        "padding": "1px",
-                                    },
-                                ),
-                                dcc.Store(
-                                    id="is_set_to_extreme_homologies",
-                                    data=False,
-                                ),
-                            ],
-                            style={"padding": "0px"},
-                        ),
-                        className="""
-                                d-flex align-items-center justify-content-center my-1
-                                rounded-1
-                            """,
-                        style={
-                            "height": "55px",
-                            "width": "90%",
-                            "backgroundColor": "#2e2e2e",
-                        },
+                        className="d-flex justify-content-evenly mt-2 mb-2",
                     ),
                     dbc.Row(
                         html.Div(
@@ -497,8 +429,76 @@ def make_tab_edit() -> dbc.Tab:
                                 size="md",
                                 style={"width": "90%", "fontSize": "14px"},
                             ),
-                            className="d-flex justify-content-center my-1",
+                            className="d-flex justify-content-center mt-1 mb-3",
                         ),
+                    ),
+                    dbc.Row(
+                        [
+                            html.Span("Truncate or Set Colormap to Extreme Homologies"),
+                        ],
+                        className="d-flex justify-content-center text-left mt-3 mb-0",
+                        style={"fontSize": "14px", "width": "90%"},
+                    ),
+                    dbc.Row(
+                        dmc.ButtonGroup(
+                            [
+                                dmc.Button(
+                                    "Truncate",
+                                    id="truncate-colorscale-button",
+                                    variant="filled",
+                                    size="md",
+                                    style={
+                                        "pointer-events": "none",
+                                    },
+                                    styles={
+                                        "root": {
+                                            "fontSize": "14px",
+                                        }
+                                    },
+                                ),
+                                dmc.Button(
+                                    "Extreme Homol.",
+                                    id="extreme-homologies-button",
+                                    variant="subtle",
+                                    size="md",
+                                    styles={
+                                        "root": {
+                                            "fontSize": "14px",
+                                        }
+                                    },
+                                ),
+                                dcc.Store(
+                                    id="is_set_to_extreme_homologies",
+                                    data=False,
+                                ),
+                            ],
+                            style={
+                                "padding": "0px",
+                                "borderWidth": "solid",
+                                "borderStyle": "solid",
+                                "borderColor": "#424242",
+                                "borderRadius": "5px",
+                                "backgroundColor": "#2e2e2e",
+                            },
+                        ),
+                        style={"width": "85%"},
+                        className="d-flex justify-content-evenly mb-2",
+                    ),
+                    dbc.Row(
+                        [
+                            dmc.Button(
+                                "Update Homologies",
+                                id="change-homology-color-button",
+                                leftSection=DashIconify(
+                                    icon="radix-icons:update",
+                                    width=25,
+                                ),
+                                color="#b303b3",
+                                size="md",
+                                style={"fontSize": "14px", "width": "200px"},
+                            ),
+                        ],
+                        className="d-flex justify-content-evenly my-2",
                     ),
                 ],
                 className="d-flex justify-content-center mt-2",
@@ -518,77 +518,98 @@ def make_tab_save() -> dbc.Tab:
         children=[
             dbc.Row(
                 [
-                    dmc.Select(
-                        label="Format",
-                        id="figure-format",
-                        value="png",
-                        data=[
-                            {"value": "png", "label": "png"},
-                            {"value": "jpg", "label": "jpg"},
-                            {"value": "pdf", "label": "pdf"},
-                            {"value": "svg", "label": "svg"},
-                            {"value": "html", "label": "html"},
-                        ],
-                        w=100,
-                        size="sm",
-                    ),
-                    dmc.Button(
-                        "Download",
-                        id="download-plot-button",
-                        leftSection=DashIconify(
-                            icon="bytesize:download",
-                            width=25,
+                    dbc.Row(
+                        make_dmc_select(
+                            label="Format",
+                            id="figure-format",
+                            value="png",
+                            data=[
+                                {"value": "png", "label": "png"},
+                                {"value": "jpg", "label": "jpg"},
+                                {"value": "pdf", "label": "pdf"},
+                                {"value": "svg", "label": "svg"},
+                                {"value": "html", "label": "html"},
+                            ],
                         ),
-                        variant="outline",
-                        color="#3a7ebf",
-                        size="sm",
-                        style={
-                            "fontSize": "12px",
-                            "borderWidth": "2px",
-                            "width": "150px",
-                        },
+                        className="d-flex justify-content-evenly my-1",
                     ),
-                    dcc.Download(id="download-plot-component"),
+                    dbc.Row(
+                        dmc.NumberInput(
+                            label="Width",
+                            id="figure-width",
+                            value=1200,
+                            step=10,
+                            w=200,
+                            size="md",
+                            suffix=" px",
+                            style={"padding": "0"},
+                            styles={
+                                "input": {"fontSize": "14px"},
+                                "label": {"fontSize": "14px"},
+                            },
+                        ),
+                        className="d-flex justify-content-evenly mb-1",
+                    ),
+                    dbc.Row(
+                        dmc.NumberInput(
+                            label="Height",
+                            id="figure-height",
+                            value=1000,
+                            step=10,
+                            w=200,
+                            size="md",
+                            suffix=" px",
+                            style={"padding": "0"},
+                            styles={
+                                "input": {"fontSize": "14px"},
+                                "label": {"fontSize": "14px"},
+                            },
+                        ),
+                        className="d-flex justify-content-evenly mb-1",
+                    ),
+                    dbc.Row(
+                        dmc.NumberInput(
+                            label="Scale",
+                            id="figure-scale",
+                            value=1,
+                            step=0.2,
+                            min=1,
+                            max=10,
+                            w=200,
+                            size="md",
+                            style={"padding": "0"},
+                            styles={
+                                "input": {"fontSize": "14px"},
+                                "label": {"fontSize": "14px"},
+                            },
+                        ),
+                        className="d-flex justify-content-evenly mb-3",
+                    ),
+                    dbc.Row(
+                        [
+                            dmc.Button(
+                                "Download",
+                                id="download-plot-button",
+                                leftSection=DashIconify(
+                                    icon="bytesize:download",
+                                    width=25,
+                                ),
+                                variant="outline",
+                                color="#3a7ebf",
+                                size="md",
+                                style={
+                                    "fontSize": "14px",
+                                    "borderWidth": "2px",
+                                    "width": "200px",
+                                },
+                            ),
+                            dcc.Download(id="download-plot-component"),
+                        ],
+                        className="d-flex justify-content-evenly mb-1",
+                    ),
                 ],
-                className="d-flex align-items-end justify-content-evenly mt-4 mb-2",
-                style={"margin": "2px"},
-            ),
-            dbc.Row(
-                [
-                    dmc.NumberInput(
-                        label="Width",
-                        id="figure-width",
-                        value=1200,
-                        step=10,
-                        w=100,
-                        size="sm",
-                        suffix=" px",
-                        style={"padding": "0"},
-                    ),
-                    dmc.NumberInput(
-                        label="Height",
-                        id="figure-height",
-                        value=1000,
-                        step=10,
-                        w=100,
-                        size="sm",
-                        suffix=" px",
-                        style={"padding": "0"},
-                    ),
-                    dmc.NumberInput(
-                        label="Scale",
-                        id="figure-scale",
-                        value=1,
-                        step=0.2,
-                        min=1,
-                        max=10,
-                        w=80,
-                        size="sm",
-                        style={"padding": "0"},
-                    ),
-                ],
-                className="d-flex align-items-end justify-content-evenly mt-4 mb-2",
-                style={"margin": "2px"},
+                className="d-flex justify-content-center mt-2",
+                style={"margin": "5px"},
             ),
         ],
     )
