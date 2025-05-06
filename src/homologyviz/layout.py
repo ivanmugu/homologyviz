@@ -171,7 +171,7 @@ def make_tab_main() -> dbc.Tab:
                         [
                             dmc.Button(  # DRAW PLOT
                                 "Plot",
-                                id="draw-button",
+                                id="plot-button",
                                 leftSection=DashIconify(
                                     icon="stash:pencil-writing-light",
                                     width=25,
@@ -357,7 +357,7 @@ def make_tab_edit() -> dbc.Tab:
                         [
                             dmc.Button(
                                 "Select Items",
-                                id="select-change-color-button",
+                                id="select-items-button",
                                 leftSection=DashIconify(
                                     icon="material-symbols-light:arrow-selector-tool-outline",
                                     width=30,
@@ -365,10 +365,9 @@ def make_tab_edit() -> dbc.Tab:
                                 color="#3a7ebf",
                                 size="md",
                                 variant="outline",
-                                # disabled=True,
                                 style={"fontSize": "12px", "width": "200px"},
                             ),
-                            dcc.Store(id="select-button-state-store", data=False),
+                            dcc.Store(id="select-items-button-store", data=False),
                         ],
                         className="d-flex justify-content-evenly mb-2",
                     ),

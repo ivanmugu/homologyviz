@@ -87,43 +87,295 @@ def save_uploaded_file(file_name, content, temp_folder_path: Path) -> str:
     return str(output_path)
 
 
-# def update_dash_parameters(dash_parameters: plt.PlotParameters) -> plt.PlotParameters:
-#     """Check user input to update the metadata stored at the PlotParameters class."""
-#     # Store input_files and output_folder Paths in dash_parameters
-#     dash_parameters.input_files = input_files
-#     dash_parameters.output_folder = output_folder
-#     # Save number of files
-#     dash_parameters.number_gb_records = len(input_files)
-#     # Make alignments
-#     gb_df, cds_df, alignments_df, regions_df = plt.make_alignments(
-#         input_files, output_folder
-#     )
-#     # Add alignments to dash_parameters
-#     dash_parameters.gb_df = gb_df
-#     dash_parameters.cds_df = cds_df
-#     dash_parameters.alignments_df = alignments_df
-#     dash_parameters.alignments_regions_df = regions_df
-#     # Find longest sequence
-#     dash_parameters.longest_sequence = get_longest_sequence_dataframe(gb_df)
+def handle_plot_button_click(
+    dash_parameters: plt.PlotParameters,
+    virtual,
+    tmp_directory_path: Path,
+    align_plot_state: str,
+    color_scale_state: str,
+    range_slider_state: list,
+    is_set_to_extreme_homologies: bool,
+    annotate_sequences_state: str,
+    annotate_genes_state: str,
+    use_genes_info_from_state: str,
+    minimum_homology_length_state: int,
+    scale_bar_state: str,
+):
+    """Perform BLASTn alignments and plot"""
+    print("clicking plot-button")
+    print(f"tmp directory path: {tmp_directory_path}")
+    dash_parameters.draw_from_button = "plot-button"
 
-#     # Store the rest of information provided by the user for plotting
-#     dash_parameters.alignments_position = align_plot_state
-#     dash_parameters.identity_color = color_scale_state
-#     dash_parameters.colorscale_vmin = range_slider_state[0] / 100
-#     dash_parameters.colorscale_vmax = range_slider_state[1] / 100
-#     dash_parameters.set_colorscale_to_extreme_homologies = is_set_to_extreme_homologies
-#     dash_parameters.annotate_sequences = annotate_sequences_state
-#     dash_parameters.annotate_genes = annotate_genes_state
-#     dash_parameters.annotate_genes_with = use_genes_info_from_state
-#     # For now set it to "straight". Change it after fixing the bezier storage data
-#     dash_parameters.straight_homology_regions = "straight"
-#     dash_parameters.minimum_homology_length = minimum_homology_length_state
-#     dash_parameters.add_scale_bar = scale_bar_state
-#     dash_parameters.selected_traces = []
+    input_files = [Path(row["filepath"]) for row in virtual]
+    dash_parameters.input_files = input_files
+    dash_parameters.output_folder = tmp_directory_path
+    dash_parameters.number_gb_records = len(input_files)
 
-#     # Set separation of sequences in the Y axis
-#     dash_parameters.y_separation = 10
-#     pass
+    gb_df, cds_df, alignments_df, regions_df = plt.make_alignments(
+        input_files, tmp_directory_path
+    )
+    dash_parameters.gb_df = gb_df
+    dash_parameters.cds_df = cds_df
+    dash_parameters.alignments_df = alignments_df
+    dash_parameters.alignments_regions_df = regions_df
+    dash_parameters.longest_sequence = get_longest_sequence_dataframe(gb_df)
+
+    dash_parameters.alignments_position = align_plot_state
+    dash_parameters.identity_color = color_scale_state
+    dash_parameters.colorscale_vmin = range_slider_state[0] / 100
+    dash_parameters.colorscale_vmax = range_slider_state[1] / 100
+    dash_parameters.set_colorscale_to_extreme_homologies = is_set_to_extreme_homologies
+    dash_parameters.annotate_sequences = annotate_sequences_state
+    dash_parameters.annotate_genes = annotate_genes_state
+    dash_parameters.annotate_genes_with = use_genes_info_from_state
+    dash_parameters.straight_homology_regions = "straight"
+    dash_parameters.minimum_homology_length = minimum_homology_length_state
+    dash_parameters.add_scale_bar = scale_bar_state
+    dash_parameters.selected_traces = []
+    dash_parameters.y_separation = 10
+
+    fig = plt.make_figure(dash_parameters)
+    fig.update_layout(clickmode="event+select")
+    print("figure is displayed")
+    return fig, None, False
+
+
+def check_plot_parameters_for_update_homologies(
+    dash_parameters: plt.PlotParameters,
+    color_scale_state: str,
+    range_slider_state: list,
+    is_set_to_extreme_homologies: bool,
+) -> bool:
+    """Check if values of PlotParameters are the same as the Dash State values for
+    updating homologies.
+
+    If values are the same return False.
+    Otherwise, update PlotParameters values and return True.
+    """
+    vmin = range_slider_state[0] / 100
+    vmax = range_slider_state[1] / 100
+    # if all values are the same as in dash_parameter, then return False
+    if (
+        color_scale_state == dash_parameters.identity_color
+        and vmin == dash_parameters.colorscale_vmin
+        and vmax == dash_parameters.colorscale_vmax
+        and is_set_to_extreme_homologies
+        == dash_parameters.set_colorscale_to_extreme_homologies
+    ):
+        return False
+    else:
+        dash_parameters.identity_color = color_scale_state
+        dash_parameters.colorscale_vmin = vmin
+        dash_parameters.colorscale_vmax = vmax
+        dash_parameters.set_colorscale_to_extreme_homologies = (
+            is_set_to_extreme_homologies
+        )
+        return True
+
+
+def handle_update_homologies_click(
+    dash_parameters: plt.PlotParameters,
+    figure_state: dict,
+    color_scale_state: str,
+    range_slider_state: list,
+    is_set_to_extreme_homologies: bool,
+):
+    """Change homology color and colorscale bar legend"""
+    if not check_plot_parameters_for_update_homologies(
+        dash_parameters,
+        color_scale_state,
+        range_slider_state,
+        is_set_to_extreme_homologies,
+    ):
+        return figure_state, None, False
+
+    fig = plt.change_homoloy_color_traces(
+        figure=figure_state,
+        colorscale_name=color_scale_state,
+        vmin_truncate=range_slider_state[0] / 100,
+        vmax_truncate=range_slider_state[1] / 100,
+        set_colorscale_to_extreme_homologies=is_set_to_extreme_homologies,
+        lowest_homology=dash_parameters.lowest_identity,
+        highest_homology=dash_parameters.highest_identity,
+    )
+
+    # Remove old colorscale bar legend
+    fig = plt.remove_traces_by_name(fig, "colorbar legend")
+
+    # Convert the fig dictionary return by remove_traces_by_name into a Figure object
+    fig = Figure(data=fig["data"], layout=fig["layout"])
+
+    # Make new colorscale bar legend
+    fig = plt.plot_colorbar_legend(
+        fig=fig,
+        colorscale=plt.get_truncated_colorscale(
+            colorscale_name=color_scale_state,
+            vmin=range_slider_state[0] / 100,
+            vmax=range_slider_state[1] / 100,
+        ),
+        min_value=dash_parameters.lowest_identity,
+        max_value=dash_parameters.highest_identity,
+        set_colorscale_to_extreme_homologies=is_set_to_extreme_homologies,
+    )
+    return fig, None, False
+
+
+def handle_change_color_click(
+    figure_state: dict, dash_parameters: plt.PlotParameters, color_input_state: str
+):
+    """Change color of selected traces."""
+    curve_numbers = set(dash_parameters.selected_traces)
+    # Iterate over selected curve numbers and change color
+    for curve_number in curve_numbers:
+        figure_state["data"][curve_number]["fillcolor"] = color_input_state
+        figure_state["data"][curve_number]["line"]["color"] = color_input_state
+        figure_state["data"][curve_number]["line"]["width"] = 1
+    # Empty "selected_traces" list.
+    dash_parameters.selected_traces.clear()
+    return figure_state, None, False
+
+
+def handle_select_traces_click(
+    figure_state: dict, dash_parameters: plt.PlotParameters, click_data
+):
+    """Store data of selected traces and make a selection effect."""
+    # Get curve_number (selected trace)
+    curve_number = click_data["points"][0]["curveNumber"]
+    # If curve_number already in "selected_traces", remove it from the list and
+    # restore trace to its previous state; this creates the effect of deselecting.
+    if curve_number in dash_parameters.selected_traces:
+        dash_parameters.selected_traces.remove(curve_number)
+        fillcolor = figure_state["data"][curve_number]["fillcolor"]
+        figure_state["data"][curve_number]["line"]["color"] = fillcolor
+        figure_state["data"][curve_number]["line"]["width"] = 1
+        return figure_state, None, False
+    # Save the curve number in "selected_traces" for future modification
+    dash_parameters.selected_traces.append(curve_number)
+    # Make selection effect by changing line color of selected trace
+    fig = plt.make_selection_effect(figure_state, curve_number)
+    return fig, None, False
+
+
+def align_plot(
+    figure_state: dict, dash_parameters: plt.PlotParameters, align_plot_state: str
+) -> Figure:
+    """Align plot to the left, center, or right."""
+    # ==== Align sequences in the plot ========================================= #
+    # Check if user wants to change the plot position
+    if align_plot_state != dash_parameters.alignments_position:
+        # Change the value of dash_parameters -> alignments_position
+        dash_parameters.alignments_position = align_plot_state
+        # Make figure with new plot position
+        fig = plt.make_figure(dash_parameters)
+    # Otherwise, convert figure_state dictionary into a Figure object
+    else:
+        fig = Figure(data=figure_state["data"], layout=figure_state["layout"])
+    return fig
+
+
+def update_genes_annotations(
+    fig, dash_parameters, use_genes_info_from_state, annotate_genes_state
+):
+    """Update the annotations of the top and bottom genes."""
+    if (
+        use_genes_info_from_state != dash_parameters.annotate_genes_with
+        and annotate_genes_state != "no"
+    ):
+        # Update dash_parameters.
+        dash_parameters.annotate_genes_with = use_genes_info_from_state
+        # Remove any gene annotations
+        fig = plt.remove_annotations_by_name(fig, "Gene annotation:")
+        # Annotate with the new parameter
+        fig = plt.annotate_genes(fig, dash_parameters)
+    # check if value of annotate_genes_state is different in dash_parameters
+    if annotate_genes_state != dash_parameters.annotate_genes:
+        # change value of dash_parameters -> annotate_genes
+        dash_parameters.annotate_genes = annotate_genes_state
+        # Remove any gene annotations
+        fig = plt.remove_annotations_by_name(fig, "Gene annotation:")
+        # If asked add new annotations
+        if annotate_genes_state != "no":
+            fig = plt.annotate_genes(fig, dash_parameters)
+    return fig
+
+
+def update_dna_sequences_annotations(fig, dash_parameters, annotate_sequences_state):
+    """Update the annotations of the lines representing DNA sequences."""
+    if annotate_sequences_state != dash_parameters.annotate_sequences:
+        # Change value of dash_parameters -> annotate_sequences
+        dash_parameters.annotate_sequences = annotate_sequences_state
+        # Remove any dna sequence annotations
+        fig = plt.remove_annotations_by_name(fig, "Sequence annotation:")
+        # If annotate_sequences_state is not "no" add annotations.
+        if annotate_sequences_state != "no":
+            fig = plt.annotate_dna_sequences(
+                fig=fig,
+                gb_records=dash_parameters.gb_df,
+                longest_sequence=dash_parameters.longest_sequence,
+                number_gb_records=dash_parameters.number_gb_records,
+                annotate_with=dash_parameters.annotate_sequences,
+                y_separation=dash_parameters.y_separation,
+            )
+    return fig
+
+
+def update_scale_bar(fig, dash_parameters, scale_bar_state):
+    """Update view of the scale bar."""
+    # check if value of scale_bar_state is different in dash_parameters
+    if scale_bar_state != dash_parameters.add_scale_bar:
+        # change value of dash_parameters -> add_cale_bar
+        dash_parameters.add_scale_bar = scale_bar_state
+        # toggle scale bar
+        fig = plt.toggle_scale_bar(fig, True if scale_bar_state == "yes" else False)
+    return fig
+
+
+def update_minimum_homology_length(fig, dash_parameters, minimum_homology_length_state):
+    """Update minimum homology displayed."""
+    # check if minimum homology length is different from dash_parameters
+    if minimum_homology_length_state != dash_parameters.minimum_homology_length:
+        # change value of dash_parameters -> minimum_homology_length
+        dash_parameters.minimum_homology_length = minimum_homology_length_state
+        # Update homology regions.
+        fig = plt.hide_homology(fig, int(minimum_homology_length_state))
+    return fig
+
+
+def handle_update_view_click(
+    figure_state,
+    dash_parameters,
+    align_plot_state,
+    use_genes_info_from_state,
+    annotate_genes_state,
+    annotate_sequences_state,
+    scale_bar_state,
+    minimum_homology_length_state,
+):
+    # Align plot to the left, center, or right
+    fig = align_plot(figure_state, dash_parameters, align_plot_state)
+
+    # Update genes annotations
+    fig = update_genes_annotations(
+        fig,
+        dash_parameters,
+        use_genes_info_from_state,
+        annotate_genes_state,
+    )
+
+    # Update DNA sequences annotations
+    fig = update_dna_sequences_annotations(
+        fig, dash_parameters, annotate_sequences_state
+    )
+
+    # Toggle scale bar
+    fig = update_scale_bar(fig, dash_parameters, scale_bar_state)
+
+    # Update the minimum homology displayed
+    fig = update_minimum_homology_length(
+        fig, dash_parameters, minimum_homology_length_state
+    )
+
+    return fig, None, False
 
 
 def register_callbacks(app: dash.Dash) -> dash.Dash:
@@ -131,8 +383,7 @@ def register_callbacks(app: dash.Dash) -> dash.Dash:
     # Create the tmp directory and ensure it's deleted when the app stops
     tmp_directory = tempfile.TemporaryDirectory()
     atexit.register(tmp_directory.cleanup)
-    tmp_path = Path(tmp_directory.name)
-
+    tmp_directory_path = Path(tmp_directory.name)
     # Monitor the Dash app tab status
     heartbeat_parameters = HeartBeatsParameters()
 
@@ -160,7 +411,7 @@ def register_callbacks(app: dash.Dash) -> dash.Dash:
             new_rows = []
             # Simulate saving each file and creating a temporary file path
             for name, content in zip(filenames, contents):
-                file_path = save_uploaded_file(name, content, tmp_path)
+                file_path = save_uploaded_file(name, content, tmp_directory_path)
                 new_rows.append({"filename": name, "filepath": file_path})
 
             # Append new filenames and file paths to the table data
@@ -173,7 +424,7 @@ def register_callbacks(app: dash.Dash) -> dash.Dash:
 
         return current_row_data if current_row_data else []
 
-    # ==== plot the alignments -> MAIN FUNCTION ======================================== #
+    # MAIN CALLBACK FUNCTION: Plot the Alignments
     @app.callback(
         [
             Output("plot", "figure"),
@@ -181,7 +432,7 @@ def register_callbacks(app: dash.Dash) -> dash.Dash:
             Output("plot-skeleton", "visible"),
         ],
         [
-            Input("draw-button", "n_clicks"),
+            Input("plot-button", "n_clicks"),
             Input("erase-button", "n_clicks"),
             Input("plot", "clickData"),
             Input("change-homology-color-button", "n_clicks"),
@@ -193,7 +444,7 @@ def register_callbacks(app: dash.Dash) -> dash.Dash:
             State("tabs", "active_tab"),
             State("plot", "figure"),
             State("color-input", "value"),
-            State("select-button-state-store", "data"),
+            State("select-items-button-store", "data"),
             State("color-scale", "value"),
             State("range-slider", "value"),
             State("align-plot", "value"),
@@ -218,7 +469,7 @@ def register_callbacks(app: dash.Dash) -> dash.Dash:
         active_tab,  # state activet tab
         figure_state,  # state output Figure object
         color_input_state,  # state color input
-        select_button_state,  # state select button state store
+        select_items_state,  # state select button state store
         color_scale_state,  # state color scale
         range_slider_state,  # state range slider for color scale
         align_plot_state,  # state align plot
@@ -237,223 +488,82 @@ def register_callbacks(app: dash.Dash) -> dash.Dash:
         The Output to Plot—clickData to None in all the returns allows selecting and
         deselecting traces in the plot.
         """
-        print("no se que esta pasando en main_plot!!!!")
         # Use context to find the button that triggered the callback.
         ctx = dash.callback_context
         button_id = ctx.triggered[0]["prop_id"].split(".")[0]
         print(f"button_id: {button_id}")
 
-        # Update metadata stored at dash_parameters
-
         # ============================================================================== #
-        #                             MAIN TAB -> Plot                                   #
-        # ============================================================================== #
-        # ==== Plot Sequences ========================================================== #
-        if (button_id == "draw-button") and virtual:
-            # Store all the metadata for plotting into the dash_parameters object. The
-            # dash_parameters object is a PlotParameters class declared at the top of
-            # the `create_dash_app` function
-            print("clicking draw-button")
-            # Drawing plot from draw-button
-            dash_parameters.draw_from_button = button_id
-
-            # Convert paths to input_files and output_folder into Path objects
-            input_files = [Path(row["filepath"]) for row in virtual]
-            output_folder = Path(tmp_directory.name)
-            # Store input_files and output_folder Paths in dash_parameters
-            dash_parameters.input_files = input_files
-            dash_parameters.output_folder = output_folder
-            # Save number of files
-            dash_parameters.number_gb_records = len(input_files)
-            # Make alignments
-            gb_df, cds_df, alignments_df, regions_df = plt.make_alignments(
-                input_files, output_folder
+        # TAB MAIN
+        # Perform Alignments & Plot
+        if (button_id == "plot-button") and virtual:
+            return handle_plot_button_click(
+                dash_parameters,
+                virtual,
+                tmp_directory_path,
+                align_plot_state,
+                color_scale_state,
+                range_slider_state,
+                is_set_to_extreme_homologies,
+                annotate_sequences_state,
+                annotate_genes_state,
+                use_genes_info_from_state,
+                minimum_homology_length_state,
+                scale_bar_state,
             )
-            # Add alignments to dash_parameters
-            dash_parameters.gb_df = gb_df
-            dash_parameters.cds_df = cds_df
-            dash_parameters.alignments_df = alignments_df
-            dash_parameters.alignments_regions_df = regions_df
-            # Find longest sequence
-            dash_parameters.longest_sequence = get_longest_sequence_dataframe(gb_df)
 
-            # Store the rest of information provided by the user for plotting
-            dash_parameters.alignments_position = align_plot_state
-            dash_parameters.identity_color = color_scale_state
-            dash_parameters.colorscale_vmin = range_slider_state[0] / 100
-            dash_parameters.colorscale_vmax = range_slider_state[1] / 100
-            dash_parameters.set_colorscale_to_extreme_homologies = (
-                is_set_to_extreme_homologies
-            )
-            dash_parameters.annotate_sequences = annotate_sequences_state
-            dash_parameters.annotate_genes = annotate_genes_state
-            dash_parameters.annotate_genes_with = use_genes_info_from_state
-            # For now set it to "straight". Change it after fixing the bezier storage data
-            dash_parameters.straight_homology_regions = "straight"
-            dash_parameters.minimum_homology_length = minimum_homology_length_state
-            dash_parameters.add_scale_bar = scale_bar_state
-            dash_parameters.selected_traces = []
-
-            # Set separation of sequences in the Y axis
-            dash_parameters.y_separation = 10
-
-            # Make figure
-            fig = plt.make_figure(dash_parameters)
-
-            fig.update_layout(clickmode="event+select")
-            print("figure is displayed")
-            return fig, None, False
-
-        # ==== Erase plot ============================================================== #
+        # Erase Plot & Reset All Parameters
         if button_id == "erase-button":
-            # Reset all attributes of dash_parameters.
             dash_parameters.reset()
             # Return an empty figure, None for clickdata, and False for skeleton
             return {}, None, False
 
         # ============================================================================== #
-        #                           EDIT TAB -> colors                                   #
-        # ============================================================================== #
-        # = Change homology color and colorscale bar legend = #
+        # TAB EDIT
+        # Change Homology Color Regions and Colorscale Bar Legend
         if button_id == "change-homology-color-button":
-            # If color_scale is different, update dash_paremeters.identity_color
-            if color_scale_state != dash_parameters.identity_color:
-                dash_parameters.identity_color = color_scale_state
-            # Change homology color traces
-            fig = plt.change_homoloy_color_traces(
-                figure=figure_state,
-                colorscale_name=color_scale_state,
-                vmin_truncate=range_slider_state[0] / 100,
-                vmax_truncate=range_slider_state[1] / 100,
-                set_colorscale_to_extreme_homologies=is_set_to_extreme_homologies,
-                lowest_homology=dash_parameters.lowest_identity,
-                highest_homology=dash_parameters.highest_identity,
+            return handle_update_homologies_click(
+                dash_parameters,
+                figure_state,
+                color_scale_state,
+                range_slider_state,
+                is_set_to_extreme_homologies,
             )
-            # Remove old colorscale bar legend
-            fig = plt.remove_traces_by_name(fig, "colorbar legend")
-            # Convert the fig dictionary return by remove_traces_by_name into a Figure
-            # object
-            fig = Figure(data=fig["data"], layout=fig["layout"])
-            # Make new colorscale bar legend
-            fig = plt.plot_colorbar_legend(
-                fig=fig,
-                colorscale=plt.get_truncated_colorscale(
-                    colorscale_name=color_scale_state,
-                    vmin=range_slider_state[0] / 100,
-                    vmax=range_slider_state[1] / 100,
-                ),
-                min_value=dash_parameters.lowest_identity,
-                max_value=dash_parameters.highest_identity,
-                set_colorscale_to_extreme_homologies=is_set_to_extreme_homologies,
-            )
-            return fig, None, False
 
-        # = Change color of selected traces = #
+        # Change Color of Selected Traces
         if button_id == "change-gene-color-button":
-            curve_numbers = set(dash_parameters.selected_traces)
-            # Iterate over selected curve numbers and change color
-            for curve_number in curve_numbers:
-                figure_state["data"][curve_number]["fillcolor"] = color_input_state
-                figure_state["data"][curve_number]["line"]["color"] = color_input_state
-                figure_state["data"][curve_number]["line"]["width"] = 1
-            # Empty "selected_traces" list.
-            dash_parameters.selected_traces.clear()
-            return figure_state, None, False
+            return handle_change_color_click(
+                figure_state,
+                dash_parameters,
+                color_input_state,
+            )
 
-        # = Select traces for changing color = #
+        # Select Traces for Changing Color
         if (
             (active_tab == "tab-edit")
             and (click_data is not None)
-            and select_button_state
+            and select_items_state
         ):
-            # Get curve_number (selected trace)
-            curve_number = click_data["points"][0]["curveNumber"]
-            # If curve_number already in "selected_traces", remove it from the list and
-            # restore trace to its previous state; this creates the effect of deselecting.
-            if curve_number in dash_parameters.selected_traces:
-                dash_parameters.selected_traces.remove(curve_number)
-                fillcolor = figure_state["data"][curve_number]["fillcolor"]
-                figure_state["data"][curve_number]["line"]["color"] = fillcolor
-                figure_state["data"][curve_number]["line"]["width"] = 1
-                return figure_state, None, False
-            # Save the curve number in "selected_traces" for future modification
-            dash_parameters.selected_traces.append(curve_number)
-            # Make selection effect by changing line color of selected trace
-            fig = plt.make_selection_effect(figure_state, curve_number)
-            return fig, None, False
+            return handle_select_traces_click(
+                figure_state,
+                dash_parameters,
+                click_data,
+            )
 
         # ============================================================================== #
-        #                                  VIEW TAB                                      #
-        # ============================================================================== #
-        if figure_state and button_id == "update-annotations":
-            # ==== Align sequences in the plot ========================================= #
-            # Check if user wants to change the plot position
-            if align_plot_state != dash_parameters.alignments_position:
-                # Change the value of dash_parameters -> alignments_position
-                dash_parameters.alignments_position = align_plot_state
-                # Make figure with new plot position
-                fig = plt.make_figure(dash_parameters)
-            # Otherwise, convert figure_state dictionary into a Figure object
-            else:
-                fig = Figure(data=figure_state["data"], layout=figure_state["layout"])
-
-            # ==== Genes Annotations =================================================== #
-            # check if user changed use_genes_info_from_state and if user wants to
-            # to annotate genes
-            if (
-                use_genes_info_from_state != dash_parameters.annotate_genes_with
-                and annotate_genes_state != "no"
-            ):
-                # Update dash_parameters.
-                dash_parameters.annotate_genes_with = use_genes_info_from_state
-                # Remove any gene annotations
-                fig = plt.remove_annotations_by_name(fig, "Gene annotation:")
-                # Annotate with the new parameter
-                fig = plt.annotate_genes(fig, dash_parameters)
-            # check if value of annotate_genes_state is different in dash_parameters
-            if annotate_genes_state != dash_parameters.annotate_genes:
-                # change value of dash_parameters -> annotate_genes
-                dash_parameters.annotate_genes = annotate_genes_state
-                # Remove any gene annotations
-                fig = plt.remove_annotations_by_name(fig, "Gene annotation:")
-                # If asked add new annotations
-                if annotate_genes_state != "no":
-                    fig = plt.annotate_genes(fig, dash_parameters)
-            # ==== DNA Sequences Annotations =========================================== #
-            # check if value of annotate_sequences_state is different in dash_parameters
-            if annotate_sequences_state != dash_parameters.annotate_sequences:
-                # Change value of dash_parameters -> annotate_sequences
-                dash_parameters.annotate_sequences = annotate_sequences_state
-                # Remove any dna sequence annotations
-                fig = plt.remove_annotations_by_name(fig, "Sequence annotation:")
-                # If annotate_sequences_state is not "no" add annotations.
-                if annotate_sequences_state != "no":
-                    fig = plt.annotate_dna_sequences(
-                        fig=fig,
-                        gb_records=dash_parameters.gb_df,
-                        longest_sequence=dash_parameters.longest_sequence,
-                        number_gb_records=dash_parameters.number_gb_records,
-                        annotate_with=dash_parameters.annotate_sequences,
-                        y_separation=dash_parameters.y_separation,
-                    )
-            # ==== Toggle scale bar ==================================================== #
-            # check if value of scale_bar_state is different in dash_parameters
-            if scale_bar_state != dash_parameters.add_scale_bar:
-                # change value of dash_parameters -> add_cale_bar
-                dash_parameters.add_scale_bar = scale_bar_state
-                # toggle scale bar
-                fig = plt.toggle_scale_bar(
-                    fig, True if scale_bar_state == "yes" else False
-                )
-            # ==== Minimum Homology Length ============================================= #
-            # check if minimum homology length is different from dash_parameters
-            if minimum_homology_length_state != dash_parameters.minimum_homology_length:
-                # change value of dash_parameters -> minimum_homology_length
-                dash_parameters.minimum_homology_length = minimum_homology_length_state
-                # Update homology regions.
-                fig = plt.hide_homology(fig, int(minimum_homology_length_state))
-
-            return fig, None, False
+        # TAB VIEW
+        # Update Annotations and View
+        if button_id == "update-annotations":
+            return handle_update_view_click(
+                figure_state,
+                dash_parameters,
+                align_plot_state,
+                use_genes_info_from_state,
+                annotate_genes_state,
+                annotate_sequences_state,
+                scale_bar_state,
+                minimum_homology_length_state,
+            )
 
         return figure_state, None, False
 
@@ -464,7 +574,7 @@ def register_callbacks(app: dash.Dash) -> dash.Dash:
             Output("update-annotations", "disabled"),
             Output("change-gene-color-button", "disabled"),
             Output("change-homology-color-button", "disabled"),
-            Output("select-change-color-button", "disabled"),
+            Output("select-items-button", "disabled"),
         ],
         Input("plot", "figure"),
     )
@@ -475,7 +585,7 @@ def register_callbacks(app: dash.Dash) -> dash.Dash:
 
     # ==== activate Draw button when files in upload table ============================= #
     @app.callback(
-        Output("draw-button", "disabled"),
+        Output("plot-button", "disabled"),
         Input("files-table", "rowData"),
     )
     def toggle_draw_button(row_data) -> bool:
@@ -484,11 +594,11 @@ def register_callbacks(app: dash.Dash) -> dash.Dash:
     # ==== activate Select button ====================================================== #
     @app.callback(
         [
-            Output("select-change-color-button", "variant"),
-            Output("select-button-state-store", "data"),
+            Output("select-items-button", "variant"),
+            Output("select-items-button-store", "data"),
         ],
-        Input("select-change-color-button", "n_clicks"),
-        State("select-button-state-store", "data"),
+        Input("select-items-button", "n_clicks"),
+        State("select-items-button-store", "data"),
     )
     def toggle_select_button(n_clicks, is_active):
         if n_clicks:
