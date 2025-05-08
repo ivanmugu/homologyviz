@@ -10,6 +10,17 @@ Copyright (c) 2024, Ivan Munoz Gutierrez
 import os
 import importlib.resources as resources
 from pathlib import Path
+import base64
+import binascii
+
+
+def testing_base64(content: str):
+    try:
+        base64.b64decode(content)
+        print("good base64")
+    except binascii.Error as e:
+        print(e)
+        print("Invalid base64 data:", e)
 
 
 def get_package_path(package: str = "msplotly") -> Path:
@@ -39,4 +50,7 @@ def clean_directory(directory_path: Path) -> None:
 
 
 if __name__ == "__main__":
-    print(get_package_path())
+    # print(get_package_path())
+    content_good = "data:text/plain;base64,SGVsbG8sIHdvcmxkIQ=="
+    content_bad = "this_is_not_base64"
+    testing_base64(content_good)

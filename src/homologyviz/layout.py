@@ -123,7 +123,7 @@ def make_tab_main() -> dbc.Tab:
                         [
                             dmc.Button(
                                 "Trash Selected Files",
-                                id="delete-selected-files-button",
+                                id="trash-selected-files-button",
                                 leftSection=DashIconify(
                                     icon="material-symbols-light:delete-outline-rounded",
                                     width=25,

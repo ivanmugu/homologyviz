@@ -8,6 +8,7 @@ Copyright (c) 2024, Ivan Munoz Gutierrez
 """
 
 import base64
+import binascii
 import tempfile
 import atexit
 from pathlib import Path
@@ -16,13 +17,14 @@ import os
 import signal
 import time
 import threading
-from flask import request, jsonify
+from flask import request, jsonify, Response
 import json
 
 import dash
 from dash import Input, Output, State
 from plotly.graph_objects import Figure
 
+from homologyviz.parameters import PlotParameters
 from homologyviz import plotter as plt
 from homologyviz.gb_files_manipulation import get_longest_sequence_dataframe
 
@@ -73,35 +75,94 @@ class HeartBeatsParameters:
         self.heartbeat_monitor_started = heartbeat_monitor_started
 
 
-def save_uploaded_file(file_name, content, temp_folder_path: Path) -> str:
-    """Decode the content and write it to a temporary file."""
-    # Decode content
-    data = content.split(";base64,")[1]
-    decoded_data = base64.b64decode(data)
+def save_uploaded_file(
+    file_name: str, content: str, temp_folder_path: Path
+) -> str | None:
+    """Decode the content and write it to a temporary file.
 
-    # Save uploaded file
-    output_path = temp_folder_path / file_name
-    with open(output_path, "wb") as f:
-        f.write(decoded_data)
-    # Dash doesn't like Path; hence, we need to cast Path to str.
-    return str(output_path)
+    Returns the file path as a string if successful, otherwise returns None.
+    """
+    try:
+        # Ensure content is properly formatted
+        if ";base64," not in content:
+            raise ValueError("Content is not base64-encoded or improperly formatted.")
+
+        # Decode content
+        data = content.split(";base64,")[1]
+        decoded_data = base64.b64decode(data)
+
+        # Save uploaded file
+        output_path = temp_folder_path / file_name
+        with open(output_path, "wb") as f:
+            f.write(decoded_data)
+
+        # Dash doesn't like Path; hence, we need to cast Path to str.
+        return str(output_path)
+
+    except (IndexError, ValueError, binascii.Error) as e:
+        print(f"Failed to decode and save uplaoded file: {e}")
+        return None
 
 
 def handle_plot_button_click(
-    dash_parameters: plt.PlotParameters,
-    virtual,
+    dash_parameters: PlotParameters,
+    virtual: list[dict[str, str]],
     tmp_directory_path: Path,
     align_plot_state: str,
     color_scale_state: str,
-    range_slider_state: list,
+    range_slider_state: list[int, int],
     is_set_to_extreme_homologies: bool,
     annotate_sequences_state: str,
     annotate_genes_state: str,
     use_genes_info_from_state: str,
     minimum_homology_length_state: int,
     scale_bar_state: str,
-):
-    """Perform BLASTn alignments and plot"""
+) -> tuple[Figure, None, bool]:
+    """
+    Perform BLASTn alignments and generate a homology plot for Dash.
+
+    This function prepares alignments data from input files, sets plotting parameters, and
+    generates a Plotly figure representing sequence alignments and homologies.
+
+    Parameters
+    ----------
+    dash_parameters : PlotParameters
+        Object holding all plotting configuration and data.
+    virtual : list[dict[str, str]]
+        Metadata for uploaded files, including file names and file paths.
+    tmp_directory_path : Path
+        Path to the temporary folder for storing alignments results.
+    align_plot_state : str
+        Layout preference for positioning the alignments in the plot (e.g. "left",
+        "center", "right").
+    color_scale_state : str
+        Name of the color scale used to represent homology identity levels.
+    range_slider_state : list[int, int]
+        Percent identity range (e.g. [50, 100]) selected by the used to define color
+        scalling.
+    is_set_to_extreme_homologies : bool
+        Whether to stretch the color scale to the min/max homology identity values in the
+        data.
+    annotate_sequences_state : str
+        Whether and how to annotate sequence names.
+    annotate_genes_state : str
+        whether gene features shold be annotated.
+    use_genes_info_from_state : str
+        Indicate source for genes annotations (e.g. "CDS product", "CDS gene").
+    minimum_homology_length_state : int
+        Minimum length of homology region to be displayed.
+    scale_bar_state : str
+        Whether to include a scale bar in the plot.
+
+    Returns
+    -------
+    fig : plotly.graph_objects.Figure
+    None :
+        Placeholder to reset 'clickData' in Dash callbacks.
+    bool :
+        A flag (`False`) to indicate that the dmc.Skeleton loading component should be
+        hidden.
+    """
     print("clicking plot-button")
     print(f"tmp directory path: {tmp_directory_path}")
     dash_parameters.draw_from_button = "plot-button"
@@ -141,16 +202,34 @@ def handle_plot_button_click(
 
 
 def check_plot_parameters_for_update_homologies(
-    dash_parameters: plt.PlotParameters,
+    dash_parameters: PlotParameters,
     color_scale_state: str,
-    range_slider_state: list,
+    range_slider_state: list[int, int],
     is_set_to_extreme_homologies: bool,
 ) -> bool:
-    """Check if values of PlotParameters are the same as the Dash State values for
-    updating homologies.
+    """Check if plotting parameters for homology regions provided by the user are the same
+    as the current stored values in the PlotParameters Object
 
-    If values are the same return False.
-    Otherwise, update PlotParameters values and return True.
+    If values are the same return False. Otherwise, update PlotParameters values and
+    return True
+
+    Parameters
+    ----------
+    dash_parameters : PlotParameters
+        Object holding all plotting configuration and data
+    color_scale_state : str
+        Name of the color scale used to represent homology identity levels
+    range_slider_state : list[int, int]
+        Percent identity range (e.g. [50, 100]) selected by the used to define color
+        scalling.
+    is_set_to_extreme_homologies : bool
+        Whether to stretch the color scale to the min/max homology identity values in the
+        data
+
+    Returns
+    -------
+    bool :
+        A flag to indicate if values are the same (`True`) or not (`False`)
     """
     vmin = range_slider_state[0] / 100
     vmax = range_slider_state[1] / 100
@@ -174,13 +253,42 @@ def check_plot_parameters_for_update_homologies(
 
 
 def handle_update_homologies_click(
-    dash_parameters: plt.PlotParameters,
     figure_state: dict,
+    dash_parameters: PlotParameters,
     color_scale_state: str,
-    range_slider_state: list,
+    range_slider_state: list[int, int],
     is_set_to_extreme_homologies: bool,
-):
-    """Change homology color and colorscale bar legend"""
+) -> tuple[Figure, None, bool]:
+    """Update the homology trace colors and regenerate the colorscale bar legend.
+
+    This function updates the figure based on a new colorscale or identity range, and
+    regenerates the corresponding colorbar legend for homology visualization.
+
+    Parameters
+    ----------
+    figure_state : dict
+        Dictionary representing the current Plotly figure, retrieved from dcc.Graph via
+        Dash State
+    dash_parameters : PlotParameters
+        Object holding all plotting configuration and data
+    color_scale_state : str
+        Name of the color scale used to represent homology identity levels
+    range_slider_state : list[int, int]
+        Percent identity range (e.g. [50, 100]) selected by the used to define color
+        scalling.
+    is_set_to_extreme_homologies : bool
+        Whether to stretch the color scale to the min/max homology identity values in the
+        data
+
+    Returns
+    -------
+    fig : plotly.graph_objects.Figure
+    None :
+        Placeholder to reset 'clickData' in Dash callbacks
+    bool :
+        A flag (`False`) to indicate that the dmc.Skeleton loading component should be
+        hidden
+    """
     if not check_plot_parameters_for_update_homologies(
         dash_parameters,
         color_scale_state,
@@ -221,9 +329,34 @@ def handle_update_homologies_click(
 
 
 def handle_change_color_click(
-    figure_state: dict, dash_parameters: plt.PlotParameters, color_input_state: str
-):
-    """Change color of selected traces."""
+    figure_state: dict, dash_parameters: PlotParameters, color_input_state: str
+) -> tuple[Figure, None, bool]:
+    """Change color of selected traces.
+
+    Applies the chosen color to all traces currently marked as selected in
+    `dash_parameters.selected_traces`, then clears the selection list.
+
+    Parameters
+    ----------
+    figure_state : dict
+        Dictionary representing the current Plotly figure, retrieved from dcc.Graph via
+        Dash State.
+    dash_parameters : PlotParameters
+        Object holding all plotting configuration and data, including selected traces.
+    color_input_state : str
+        Hex color code (e.g., "#FF0000) selected by the user to apply to the selected
+        traces
+
+    Returns
+    -------
+    fig : plotly.graph_objects.Figure
+        The updated Plotly figure with modified trace colors.
+    None :
+        Placeholder to reset 'clickData' in Dash callbacks
+    bool :
+        A flag (`False`) to indicate that the dmc.Skeleton loading component should be
+        hidden
+    """
     curve_numbers = set(dash_parameters.selected_traces)
     # Iterate over selected curve numbers and change color
     for curve_number in curve_numbers:
@@ -236,9 +369,38 @@ def handle_change_color_click(
 
 
 def handle_select_traces_click(
-    figure_state: dict, dash_parameters: plt.PlotParameters, click_data
-):
-    """Store data of selected traces and make a selection effect."""
+    figure_state: dict,
+    dash_parameters: PlotParameters,
+    click_data: dict,
+) -> tuple[Figure, None, bool]:
+    """
+    Handle click events on traces to toggle selection and update the figure.
+
+    This function stores the selected trace index from `click_data`, applies a visual
+    selection effect (e.g., line color/width change), and allows toggling the selection
+    on repeated clicks.
+
+    Parameters
+    ----------
+    figure_state : dict
+        Dictionary representing the current Plotly figure, retrieved from dcc.Graph via
+        Dash State.
+    dash_parameters : PlotParameters
+        Object holding all plotting configuration and data.
+    click_data : dict
+        Dictionary representing data about the clicked point, as returned by Dash's
+        `clickData`. Must contain a "points" list with "curveNumber" to identify the
+        clicked trace.
+
+    Returns
+    -------
+    fig : plotly.graph_objects.Figure
+    None :
+        Placeholder to reset 'clickData' in Dash callbacks.
+    bool :
+        A flag (`False`) to indicate that the dmc.Skeleton loading component should be
+        hidden.
+    """
     # Get curve_number (selected trace)
     curve_number = click_data["points"][0]["curveNumber"]
     # If curve_number already in "selected_traces", remove it from the list and
@@ -257,9 +419,30 @@ def handle_select_traces_click(
 
 
 def align_plot(
-    figure_state: dict, dash_parameters: plt.PlotParameters, align_plot_state: str
+    figure_state: dict, dash_parameters: PlotParameters, align_plot_state: str
 ) -> Figure:
-    """Align plot to the left, center, or right."""
+    """Align the homology plot to the left, center, or right based on user preference.
+
+    If the selected alignment differs from the current one stored in `dash_parameters`,
+    a new figure is generated. Otherwise, the existing figure state is converted back
+    to a Plotly Figure object.
+
+    Parameters
+    ----------
+    figure_state : dict
+        Dictionary representing the current Plotly figure, retrieved from dcc.Graph via
+        Dash State.
+    dash_parameters : PlotParameters
+        Object holding all plotting configuration and data.
+    align_plot_state : str
+        Layout preference for positioning the alignments in the plot (e.g. "left",
+        "center", "right").
+
+    Returns
+    -------
+    fig : plotly.graph_objects.Figure
+        The updated or restored Plotly figure.
+    """
     # ==== Align sequences in the plot ========================================= #
     # Check if user wants to change the plot position
     if align_plot_state != dash_parameters.alignments_position:
@@ -274,9 +457,35 @@ def align_plot(
 
 
 def update_genes_annotations(
-    fig, dash_parameters, use_genes_info_from_state, annotate_genes_state
-):
-    """Update the annotations of the top and bottom genes."""
+    fig: Figure,
+    dash_parameters: PlotParameters,
+    use_genes_info_from_state: str,
+    annotate_genes_state: str,
+) -> Figure:
+    """
+    Update genes annotations in the plot based on user preferences.
+
+    If the user changes either the annotation source (e.g., product or gene) or the
+    visibility of annotation (top, bottom, both, or none), the function updates the
+    figure accordingly. If no change are neede, the input figure is returned unchanged.
+
+    Parameters
+    ----------
+    fig : plotly.graph_objects.Figure.
+        The current Plotly figure to update.
+    dash_parameters : PlotParameters
+        Object holding all plotting configuration and data.
+    use_genes_info_from_state : str
+        Source of gene annotation labels (e.g., "CDS product", "CDS gene").
+    annotate_genes_state : str
+        Desired gene annotation display setting (e.g., "top", "bottom", "both", "no").
+
+    Returns
+    -------
+    fig : plotly.graph_objects.Figure.
+        The updated or original Plotly figure, depending on whether changes are needed.
+    """
+
     if (
         use_genes_info_from_state != dash_parameters.annotate_genes_with
         and annotate_genes_state != "no"
@@ -299,8 +508,33 @@ def update_genes_annotations(
     return fig
 
 
-def update_dna_sequences_annotations(fig, dash_parameters, annotate_sequences_state):
-    """Update the annotations of the lines representing DNA sequences."""
+def update_dna_sequences_annotations(
+    fig: Figure,
+    dash_parameters: PlotParameters,
+    annotate_sequences_state: str,
+) -> Figure:
+    """
+    Update DNA sequences annotations in the plot based on user preferences.
+
+    If the user changes either the annotation source (e.g., accession number, sequence
+    name, or file name) or the visibility of annotation (no), the function updates the
+    figure accordingly. If no changes are neede, the input figure is returned unchanged.
+
+    Parameters
+    ----------
+    fig : plotly.graph_objects.Figure.
+        The current Plotly figure to update.
+    dash_parameters : PlotParameters
+        Object holding all plotting configuration and data.
+    annotate_sequences_state : str
+        Desired sequence annotation display setting (e.g., "accession", "name", "fname",
+        "no").
+
+    Returns
+    -------
+    fig : plotly.graph_objects.Figure
+        The updated or original Plotly figure, depending on whether changes are needed.
+    """
     if annotate_sequences_state != dash_parameters.annotate_sequences:
         # Change value of dash_parameters -> annotate_sequences
         dash_parameters.annotate_sequences = annotate_sequences_state
@@ -319,8 +553,31 @@ def update_dna_sequences_annotations(fig, dash_parameters, annotate_sequences_st
     return fig
 
 
-def update_scale_bar(fig, dash_parameters, scale_bar_state):
-    """Update view of the scale bar."""
+def update_scale_bar(
+    fig: Figure,
+    dash_parameters: PlotParameters,
+    scale_bar_state: str,
+) -> Figure:
+    """
+    Update the visibility of the scale bar in the plot based on user preferences.
+
+    If the user changes the scale bar setting, the function updates the figure
+    accordingly. If no changes are needed, the input figure is returned unchanged.
+
+    Parameters
+    ----------
+    fig : plotly.graph_objects.Figure.
+        The current Plotly figure to update.
+    dash_parameters : PlotParameters
+        Object holding all plotting configuration and data.
+    scale_bar_state : str
+        Desired scale bar annotation display setting ("yes" to show, "no" to hide).
+
+    Returns
+    -------
+    fig : plotly.graph_objects.Figure
+        The updated or original Plotly figure, depending on whether changes are needed.
+    """
     # check if value of scale_bar_state is different in dash_parameters
     if scale_bar_state != dash_parameters.add_scale_bar:
         # change value of dash_parameters -> add_cale_bar
@@ -330,8 +587,32 @@ def update_scale_bar(fig, dash_parameters, scale_bar_state):
     return fig
 
 
-def update_minimum_homology_length(fig, dash_parameters, minimum_homology_length_state):
-    """Update minimum homology displayed."""
+def update_minimum_homology_length(
+    fig: Figure,
+    dash_parameters: PlotParameters,
+    minimum_homology_length_state: int,
+) -> Figure:
+    """
+    Update minimum homology length displayed in the plot based on user preferences.
+
+    If the user changes the minimum homology length setting, the function updates the
+    figure accordingly by hidding homology regions shorter than the specified length.
+    If no changes are needed, the input figure is returned unchanged.
+
+    Parameters
+    ----------
+    fig : plotly.graph_objects.Figure.
+        The current Plotly figure to update.
+    dash_parameters : PlotParameters
+        Object holding all plotting configuration and data.
+    minimum_homology_length_state : int
+        The new minimum homology length to display in the plot.
+
+    Returns
+    -------
+    fig : plotly.graph_objects.Figure
+        The updated or original Plotly figure, depending on whether changes are needed.
+    """
     # check if minimum homology length is different from dash_parameters
     if minimum_homology_length_state != dash_parameters.minimum_homology_length:
         # change value of dash_parameters -> minimum_homology_length
@@ -342,15 +623,53 @@ def update_minimum_homology_length(fig, dash_parameters, minimum_homology_length
 
 
 def handle_update_view_click(
-    figure_state,
-    dash_parameters,
-    align_plot_state,
-    use_genes_info_from_state,
-    annotate_genes_state,
-    annotate_sequences_state,
-    scale_bar_state,
-    minimum_homology_length_state,
-):
+    figure_state: dict,
+    dash_parameters: PlotParameters,
+    align_plot_state: str,
+    use_genes_info_from_state: str,
+    annotate_genes_state: str,
+    annotate_sequences_state: str,
+    scale_bar_state: str,
+    minimum_homology_length_state: int,
+) -> tuple[Figure, None, bool]:
+    """
+    Handle the 'update view' button click event.
+
+    This function updates the current figure layout and annotations based on user
+    preferences, including alignment positioning, gene/sequence annotations, scale bar
+    visibility, and minimum homology length.
+
+    Parameters
+    ----------
+    figure_state : dict
+        Dictionary representing the current Plotly figure, retrieved from dcc.Graph via
+        Dash State.
+    dash_parameters : PlotParameters
+        Object holding all plotting configuration and data.
+    align_plot_state : str
+        Layout preference for positioning the alignments in the plot (e.g. "left",
+        "center", "right").
+    use_genes_info_from_state : str
+        Indicate source for genes annotations (e.g. "CDS product", "CDS gene").
+    annotate_genes_state : str
+        whether gene features shold be annotated.
+    annotate_sequences_state : str
+        Whether and how to annotate sequence names.
+    scale_bar_state : str
+        Whether to display the scale bar ("yes" or "no").
+    minimum_homology_length_state : int
+        Minimum length (in bp) of homology region to be displayed.
+
+    Returns
+    -------
+    fig : plotly.graph_objects.Figure
+        The updated Plotly figure with applied user preferences.
+    None :
+        Placeholder to reset 'clickData' in Dash callbacks.
+    bool :
+        A flag (`False`) to indicate that the dmc.Skeleton loading component should be
+        hidden.
+    """
     # Align plot to the left, center, or right
     fig = align_plot(figure_state, dash_parameters, align_plot_state)
 
@@ -379,7 +698,30 @@ def handle_update_view_click(
 
 
 def register_callbacks(app: dash.Dash) -> dash.Dash:
-    """Callbacks for Dash app."""
+    """
+    Register all Dash callbacks for the app, including plotting logic, UI interactins,
+    and server shutdown monitoring.
+
+    This function sets up the full interactivity of the Dash app, including:
+        - Handling file uploads and deletions.
+        - Executing BLASTn alignments and plotting homology regions.
+        - Updating annotations, colors, layout, and display options.
+        - Managing UI elements like buttons, skeleton loaders, and input states.
+        - Generating downloadable figures in various formats.
+        - Monitoring heartbeat pings from the frontend to detect tab closure and
+        gracefully shut down the app server when inactive.
+
+    Parameters
+    ----------
+    app : dash.Dash
+        The Dash app instance to which all callback functions and server routes will
+        be attached.
+
+    Returns
+    -------
+    dash.Dash
+        The same Dash app instance, now with all callbacks registered.
+    """
     # Create the tmp directory and ensure it's deleted when the app stops
     tmp_directory = tempfile.TemporaryDirectory()
     atexit.register(tmp_directory.cleanup)
@@ -388,7 +730,7 @@ def register_callbacks(app: dash.Dash) -> dash.Dash:
     heartbeat_parameters = HeartBeatsParameters()
 
     # Class to store alignments data
-    dash_parameters = plt.PlotParameters()
+    dash_parameters = PlotParameters()
 
     # ==== files-table for selected GenBank files ====================================== #
     @app.callback(
@@ -396,13 +738,42 @@ def register_callbacks(app: dash.Dash) -> dash.Dash:
         [
             Input("upload", "filename"),
             Input("upload", "contents"),
-            Input("delete-selected-files-button", "n_clicks"),
+            Input("trash-selected-files-button", "n_clicks"),
         ],
         [State("files-table", "rowData"), State("files-table", "selectedRows")],
     )
     def update_file_table(
-        filenames, contents, n_clicks, current_row_data, selected_rows
-    ):
+        filenames: list | None,
+        contents: list | None,
+        n_clicks: int | None,
+        current_row_data: list[dict] | None,
+        selected_rows: list[dict] | None,
+    ) -> list[dict[str, str]]:
+        """
+        Update the GenBank files table based on uploaded files or deletion actions.
+
+        This callback populates the table with uploaded files by decoding their content
+        and saving them temporarily. It also supports removing selected rows when the
+        "Trash Selected Files" button is clicked.
+
+        Parameters
+        ----------
+        filenames : list[str] or None
+            List of filenames uploaded via the uplaod componenet.
+        contents : list[str] or None
+            Corresponding list of base64-encoded file contents.
+        n_clicks : int or None
+            Number of items the delete button has been clicked.
+        current_row_data : list[dict] or None
+            Current content of the table (`files-table`) as a list of dictionaries.
+        selected_rows : list[dict] or None
+            Subset of `current_row_data` that the user has selected for deletion.
+
+        Returns
+        -------
+        list[dict]
+            Uploaded list of table rows reflecting uploaded files or deletions.
+        """
         ctx = dash.callback_context
         ctx_id = ctx.triggered[0]["prop_id"].split(".")[0]
         print(f"clicked from update file table: {ctx_id}")
@@ -418,7 +789,7 @@ def register_callbacks(app: dash.Dash) -> dash.Dash:
             return current_row_data + new_rows if current_row_data else new_rows
 
         # Delete selected rows
-        if ctx_id == "delete-selected-files-button":
+        if ctx_id == "trash-selected-files-button":
             updated = [row for row in current_row_data if row not in selected_rows]
             return updated
 
@@ -448,7 +819,6 @@ def register_callbacks(app: dash.Dash) -> dash.Dash:
             State("color-scale", "value"),
             State("range-slider", "value"),
             State("align-plot", "value"),
-            # State("homology-lines", "value"),
             State("minimum-homology-length", "value"),
             State("is-set-to-extreme-homologies", "data"),
             State("annotate-sequences", "value"),
@@ -459,34 +829,96 @@ def register_callbacks(app: dash.Dash) -> dash.Dash:
         prevent_initial_call=True,
     )
     def main_plot(
-        plot_button_clicks,  # input plot button click
-        clear_button_clicks,  # input clear button click
-        click_data,  # input click data form plot
-        change_homology_color_button_clicks,  # input selected color scale value
-        change_gene_color_button_clicks,  # input selected color value
-        update_annotations_clicks,  # input to update annotate sequences
-        virtual,  # state of table with path to GenBank files
-        active_tab,  # state activet tab
-        figure_state,  # state output Figure object
-        color_input_state,  # state color input
-        select_items_state,  # state select button state store
-        color_scale_state,  # state color scale
-        range_slider_state,  # state range slider for color scale
-        align_plot_state,  # state align plot
-        # homology_lines_state,  # state homology lines
-        minimum_homology_length_state,  # state miminum homology length
-        is_set_to_extreme_homologies,  # state button colorscale range
-        annotate_sequences_state,  # state annotate sequences
-        annotate_genes_state,  # state annotate sequences
-        scale_bar_state,  # state scale bar
-        use_genes_info_from_state,  # state genes info
-    ) -> Figure:
-        """Main function controling the plot.
+        plot_button_clicks: int | None,
+        clear_button_clicks: int | None,
+        click_data: dict | None,
+        change_homology_color_button_clicks: int | None,
+        change_gene_color_button_clicks: int | None,
+        update_annotations_clicks: int | None,
+        virtual: list[dict[str, str]],
+        active_tab: str,
+        figure_state: dict,
+        color_input_state: str,
+        select_items_state: bool,
+        color_scale_state: str,
+        range_slider_state: list[int, int],
+        align_plot_state: str,
+        minimum_homology_length_state: int,
+        is_set_to_extreme_homologies: bool,
+        annotate_sequences_state: str,
+        annotate_genes_state: str,
+        scale_bar_state: str,
+        use_genes_info_from_state: str,
+    ) -> tuple[Figure | dict, None, bool]:
+        """
+        Master callback function for generating and modifying the alignment plot.
+
+        This function coordinates user interactions accross multiple tabs:
+        - In the **Main** tab, it triggers the BLASTn alignments and generates the plot.
+        - In the **Edit** tab, it enables trace selection and color modifications.
+        - In the **View** tab, it updates gene/sequence annotations, scale bar visibility,
+          alignment position, and homology filtering.
+
+        The function also resets the plot when the user clicks the "Erase" button.
+
+        Parameters
+        ----------
+        plot_button_clicks : int | None
+            Number of times the "Plot" button has been clicked.
+        clear_button_clicks : int | None
+            Number of times the "Erase" button has been clicked.
+        click_data : dict | None
+            Data from clicking a trace on the plot (used for selecting/deselecting
+            traces).
+        change_homology_color_button_clicks : int | None
+            Click count for the button that changes homology colors and legend.
+        change_gene_color_button_clicks : int | None
+            Click count for the button that updates selected gene trace colors.
+        update_annotations_clicks : int | None
+            Click count for the button that updates annotations and plot layout.
+        virtual : list[dict[str, str]] | None
+            Virtual row data from the GenBank file upload table.
+        active_tab : str
+            The currently active tab in the UI (e.g., "tab-main", "tab-edit", "tab-view").
+        figure_state : dict
+            The current figure state stored in Dash, used to rebuild or modify the plot.
+        color_input_state : str
+            Color selected for updating gene trace colors (hex string).
+        select_items_state : bool
+            Whether the "Select Items" button is active for toggling trace selection.
+        color_scale_state : str
+            The selected colorscale name used for identity-based homology coloring.
+        range_slider_state : list[int, int]
+            The selected range of identity percentages used for color scaling.
+        align_plot_state : str
+            Alignment layout setting (e.g., "left", "center", "right").
+        minimum_homology_length_state : int
+            Minimum homology length (in bp) to display in the plot.
+        is_set_to_extreme_homologies : bool
+            Whether to stretch the color scale to the dataset min/max identity values.
+        annotate_sequences_state : str
+            Whether and how to annotate DNA sequences (e.g., "accession", "name", "no").
+        annotate_genes_state : str
+            Whether and where to annotate gene features (e.g., "top", "bottom", "no").
+        scale_bar_state : str
+            Whether to show the scale bar ("yes" or "no").
+        use_genes_info_from_state : str
+            Source of gene labels used for annotation (e.g., "CDS product", "CDS gene").
+
+        Returns
+        -------
+        fig : plotly.graph_objects.Figure
+            The updated Plotly figure, either newly created or modified.
+        None :
+            Placeholder to reset `clickData` in Dash (prevents stuck selections).
+        bool :
+            A flag (`False`) to hide the dmc.Skeleton loading component after plot
+            rendering.
 
         Notes
         -----
-        The Output to Plot—clickData to None in all the returns allows selecting and
-        deselecting traces in the plot.
+        - Uses `dash.callback_context` to determine which button triggered the callback.
+        - This function is central to all updates affecting the alignment plot.
         """
         # Use context to find the button that triggered the callback.
         ctx = dash.callback_context
@@ -523,8 +955,8 @@ def register_callbacks(app: dash.Dash) -> dash.Dash:
         # Change Homology Color Regions and Colorscale Bar Legend
         if button_id == "change-homology-color-button":
             return handle_update_homologies_click(
-                dash_parameters,
                 figure_state,
+                dash_parameters,
                 color_scale_state,
                 range_slider_state,
                 is_set_to_extreme_homologies,
@@ -567,7 +999,6 @@ def register_callbacks(app: dash.Dash) -> dash.Dash:
 
         return figure_state, None, False
 
-    # ==== activate update buttons only when there is a figure ========================= #
     @app.callback(
         [
             Output("erase-button", "disabled"),
@@ -578,20 +1009,54 @@ def register_callbacks(app: dash.Dash) -> dash.Dash:
         ],
         Input("plot", "figure"),
     )
-    def toggle_update_buttons(figure) -> list[bool]:
+    def toggle_update_buttons(figure: dict) -> list[bool]:
+        """
+        Enable or disable editing buttons based on whether a plot is currently displayed.
+
+        This callback disables the erase, update view, select items, change color, and
+        update homologies buttons when no figure has been generated (i.e., the figure is
+        empty). It re-enables them when valid plot data is available.
+
+        Parameters
+        ----------
+        figure : dict
+            The current Plotly figure dictionary from the graph component.
+
+        Returns
+        -------
+        list[bool]
+            A list of five boolean values corresponding to the disabled states of:
+            [erase-button, update-annotations, change-gene-color-button,
+             change-homology-color-button, select-items-button].
+        """
         if figure and figure.get("data", []):
             return [False] * 5
         return [True] * 5
 
-    # ==== activate Draw button when files in upload table ============================= #
     @app.callback(
         Output("plot-button", "disabled"),
         Input("files-table", "rowData"),
     )
-    def toggle_draw_button(row_data) -> bool:
+    def toggle_plot_button(row_data: list[dict[str, str]] | None) -> bool:
+        """
+        Enable or disable the 'Plot' button based on the presence of uploaded files.
+
+        This callback activates the 'Plot' button only when the upload table contains
+        at least one file. If no files are uploaded, the button is disabled to prevent
+        plotting without input data.
+
+        Parameters
+        ----------
+        row_data : list[dict[str, str]] or None
+            The current contents of the GenBank file upload table.
+
+        Returns
+        -------
+        bool
+            True if the button should be disabled, False otherwise.
+        """
         return False if row_data else True
 
-    # ==== activate Select button ====================================================== #
     @app.callback(
         [
             Output("select-items-button", "variant"),
@@ -600,7 +1065,31 @@ def register_callbacks(app: dash.Dash) -> dash.Dash:
         Input("select-items-button", "n_clicks"),
         State("select-items-button-store", "data"),
     )
-    def toggle_select_button(n_clicks, is_active):
+    def toggle_select_items_button(
+        n_clicks: int | None,
+        is_active: bool,
+    ) -> tuple[str, bool]:
+        """
+        Toggle the state and appearance of the 'Select Items' button when clicked.
+
+        This callback switches the internal selection mode on or off and updates
+        the button's visual style (`variant`) accordingly. When active, the button
+        appears filled; when inactive, it appears outlined.
+
+        Parameters
+        ----------
+        n_clicks : int or None
+            Number of times the 'Select Items' button has been clicked.
+        is_active : bool
+            The current selection mode state stored in Dash.
+
+        Returns
+        -------
+        variant : str
+            The button style variant ("filled" if active, "outline" if inactive).
+        is_active : bool
+            The updated state of the selection mode.
+        """
         if n_clicks:
             # Toggle the active state on click
             is_active = not is_active
@@ -612,7 +1101,6 @@ def register_callbacks(app: dash.Dash) -> dash.Dash:
             button_style = "outline"
         return button_style, is_active
 
-    # ==== toggle between set colorscale buttons ======================================= #
     @app.callback(
         [
             Output("extreme-homologies-button", "variant"),
@@ -626,7 +1114,39 @@ def register_callbacks(app: dash.Dash) -> dash.Dash:
             Input("truncate-colorscale-button", "n_clicks"),
         ],
     )
-    def toggle_colorscale_buttons(extreme_clicks, truncate_clicks):
+    def toggle_colorscale_buttons(
+        extreme_clicks: int | None,
+        truncate_clicks: int | None,
+    ) -> tuple[str, dict, str, dict, bool]:
+        """
+        Toggle the state and appearance of the 'Extreme Homologies' and
+        'Truncate Colorscale' buttons.
+
+        This callback ensures that only one of the two color scale options is active
+        at a time. The active button is visually styled as "filled" and interactive;
+        the inactive button is styled as "subtle" and disabled (via CSS pointer-events).
+        The corresponding state value (`is_set_to_extreme_homologies`) is also updated.
+
+        Parameters
+        ----------
+        extreme_clicks : int or None
+            Number of times the 'Extreme Homologies' button has been clicked.
+        truncate_clicks : int or None
+            Number of times the 'Truncate Colorscale' button has been clicked.
+
+        Returns
+        -------
+        extreme_variant : str
+            Variant for the 'Extreme Homologies' button ("filled" or "subtle").
+        extreme_style : dict
+            CSS style dictionary for the 'Extreme Homologies' button.
+        truncate_variant : str
+            Variant for the 'Truncate Colorscale' button ("filled" or "subtle").
+        truncate_style : dict
+            CSS style dictionary for the 'Truncate Colorscale' button.
+        is_set_to_extreme : bool
+            Whether the extreme homology range setting is active.
+        """
         ctx = dash.callback_context
 
         option1 = (
@@ -656,27 +1176,59 @@ def register_callbacks(app: dash.Dash) -> dash.Dash:
 
         return option1
 
-    # ==== update the color scale display ============================================== #
     @app.callback(
         Output("color-scale-display", "figure"),
         Input("color-scale", "value"),
     )
-    def update_color_scale(value):
+    def update_color_scale(value: str) -> Figure:
+        """
+        Update the horizontal color gradient display based on the selected colorscale.
+
+        This callback is triggered when the user selects a new colorscale from the
+        dropdown menu in the `Edit` tab. It passes the selected value to the
+        `create_color_line` function to generate a smooth gradient for visual feedback.
+
+        Parameters
+        ----------
+        value : str
+            The name of the selected Plotly sequential colorscale (e.g., "Greys",
+            "Blues").
+
+        Returns
+        -------
+        figure : plotly.graph_objects.Figure
+            A Plotly figure displaying a horizontal gradient representing the selected colorscale.
+        """
         return plt.create_color_line(value.capitalize())
 
-    # ==== reset app (page) ============================================================ #
     @app.callback(
         Output("url", "href"),
         Input("reset-button", "n_clicks"),
         prevent_initial_call=True,
     )
-    def reset_page(n_clicks):
+    def reset_app(n_clicks: int | None) -> str:
+        """
+        Reload the app when the "Reset" button is clicked.
+
+        This callback returns the current URL path ("/"), which triggers a full page
+        reload in Dash. It serves as a way to reset the interface and clear any stored
+        state.
+
+        Parameters
+        ----------
+        n_clicks : int or None
+            Number of times the "Reset" button has been clicked.
+
+        Returns
+        -------
+        str
+            The URL path ("/") to trigger a browser reload of the app.
+        """
         print("clicked Reset and I am reseting...")
         if n_clicks:
             # Return the current URL to trigger a reload
             return "/"
 
-    # ==== save file =================================================================== #
     @app.callback(
         Output("download-plot-component", "data"),
         Input("download-plot-button", "n_clicks"),
@@ -690,13 +1242,41 @@ def register_callbacks(app: dash.Dash) -> dash.Dash:
         prevent_initial_call=True,
     )
     def download_plot(
-        n_clicks,
-        figure,
-        figure_format,
-        scale,
-        width,
-        height,
-    ):
+        n_clicks: int | None,
+        figure: dict,
+        figure_format: str,
+        scale: int,
+        width: int,
+        height: int,
+    ) -> dict:
+        """
+        Generate downloadable plot data in the selected format when the user clicks the "Download" button.
+
+        This callback converts the current Plotly figure into either an HTML string or
+        a static image (PNG, JPEG, SVG, etc.), encodes it in base64, and returns the data
+        in a format compatible with the `dmc.Download` component.
+
+        Parameters
+        ----------
+        n_clicks : int or None
+            Number of times the "Download" button has been clicked.
+        figure : dict
+            The current Plotly figure as a dictionary (from `dcc.Graph`).
+        figure_format : str
+            The desired output format ("html", "png", "jpeg", "svg", etc.).
+        scale : int
+            Scaling factor for image resolution (used for static exports).
+        width : int
+            Width of the exported figure in pixels.
+        height : int
+            Height of the exported figure in pixels.
+
+        Returns
+        -------
+        dict
+            A dictionary containing the base64-encoded content, filename, MIME type,
+            and `base64=True` flag for download via `dmc.Download`.
+        """
         # Convert figure dictionary into a Figure object
         fig = Figure(data=figure["data"], layout=figure["layout"])
 
@@ -736,10 +1316,22 @@ def register_callbacks(app: dash.Dash) -> dash.Dash:
                 base64=True, content=encoded, filename=figure_name, type=figure_format
             )
 
-    # ↓↓↓↓ CHECKING IF TAB WAS CLOSED TO KILL SERVER ↓↓↓↓ #
+    # ↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓ CHECKING IF TAB WAS CLOSED TO KILL SERVER ↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓ #
     @app.server.route("/heartbeat", methods=["POST"])
-    def heartbeat():
-        """Receive heartbeat pings from the client."""
+    def heartbeat() -> tuple[Response, int]:
+        """
+        Receive heartbeat pings from the frontend to monitor whether the app tab is open.
+
+        This route is periodically called by the frontend to indicate that the app is
+        still active. It parses the POST payload (JSON or raw) and updates the internal
+        heartbeat counter and timestamp. If no data is received, it returns a warning.
+
+        Returns
+        -------
+        tuple
+            A Flask response with a JSON payload indicating success or failure,
+            and an HTTP status code (200 or 500).
+        """
         try:
             data = None
 
@@ -763,8 +1355,15 @@ def register_callbacks(app: dash.Dash) -> dash.Dash:
             print(f"Error in /heartbeat route: {e}", flush=True)
             return jsonify(success=False, error=str(e)), 500
 
-    def monitor_heartbeats():
-        """Monitor the heartbeats and detect tab closure."""
+    def monitor_heartbeats() -> None:
+        """
+        Continuously monitor heartbeat timestamps to detect tab closure and shut down the server.
+
+        This function runs in a background thread and checks whether the most recent
+        heartbeat has timed out (based on `heartbeat_parameters.timeout_seconds`).
+        If no new heartbeat is detected for a set period, and the heartbeat counter
+        remains unchanged, the server is shut down gracefully.
+        """
         counter = 0
         while True:
             now = time.time()
@@ -780,19 +1379,31 @@ def register_callbacks(app: dash.Dash) -> dash.Dash:
                     shutdown_server()
             time.sleep(1)  # Regular monitoring interval
 
+    # STARTING HEARTBEATS!
     if not heartbeat_parameters.heartbeat_monitor_started:
         heartbeat_parameters.heartbeat_monitor_started = True
         print("Initiating heartbeat_monitor_started")
         # Start the monitoring thread
         threading.Thread(target=monitor_heartbeats, daemon=True).start()
 
-    # Endpoint to shut down the server
     @app.server.route("/shutdown", methods=["POST"])
-    def shutdown_server():
+    def shutdown_server() -> tuple[str, int]:
+        """
+        Shut down the Dash server when triggered.
+
+        This endpoint is called by `monitor_heartbeats` when the app tab is closed
+        and no heartbeats are received for a prolonged period. It sends a SIGINT
+        signal to terminate the current process.
+
+        Returns
+        -------
+        tuple
+            A string message and HTTP status code 200 indicating shutdown.
+        """
         os.kill(os.getpid(), signal.SIGINT)  # Send a signal to terminate the process
         print("Server shutting down...")
         return "Server shutting down...", 200
 
-    # ↑↑↑↑ CHECKING IF TAB WAS CLOSED TO KILL SERVER ↑↑↑↑ #
+    # ↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑ CHECKING IF TAB WAS CLOSED TO KILL SERVER ↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑ #
 
     return app
