@@ -1,10 +1,21 @@
-"""Register callbacks for HomologyViz GUI.
+"""
+Register Dash callback functions for the HomologyViz graphical interface.
+
+This module wires together the core interactive components of the app, including:
+- File upload and deletion for GenBank files
+- Plot generation using BLASTn alignments
+- UI controls for adjusting annotations, homology colors, and visibility
+- Custom color selection and trace selection logic
+- Application reset and download features
+- Heartbeat monitoring to shut down the app when the browser tab is closed
+
+All callbacks are registered through the `register_callbacks(app)` function.
 
 License
 -------
 This file is part of HomologyViz
 BSD 3-Clause License
-Copyright (c) 2024, Ivan Munoz Gutierrez
+Copyright (c) 2024, Ivan Muñoz Gutiérrez
 """
 
 import base64
@@ -157,9 +168,9 @@ def handle_plot_button_click(
     Returns
     -------
     fig : plotly.graph_objects.Figure
-    None :
+    None
         Placeholder to reset 'clickData' in Dash callbacks.
-    bool :
+    bool
         A flag (`False`) to indicate that the dmc.Skeleton loading component should be
         hidden.
     """
@@ -228,7 +239,7 @@ def check_plot_parameters_for_update_homologies(
 
     Returns
     -------
-    bool :
+    bool
         A flag to indicate if values are the same (`True`) or not (`False`)
     """
     vmin = range_slider_state[0] / 100
@@ -283,9 +294,9 @@ def handle_update_homologies_click(
     Returns
     -------
     fig : plotly.graph_objects.Figure
-    None :
+    None
         Placeholder to reset 'clickData' in Dash callbacks
-    bool :
+    bool
         A flag (`False`) to indicate that the dmc.Skeleton loading component should be
         hidden
     """
@@ -297,7 +308,7 @@ def handle_update_homologies_click(
     ):
         return figure_state, None, False
 
-    fig = plt.change_homoloy_color_traces(
+    fig = plt.change_homology_color(
         figure=figure_state,
         colorscale_name=color_scale_state,
         vmin_truncate=range_slider_state[0] / 100,
@@ -351,9 +362,9 @@ def handle_change_color_click(
     -------
     fig : plotly.graph_objects.Figure
         The updated Plotly figure with modified trace colors.
-    None :
+    None
         Placeholder to reset 'clickData' in Dash callbacks
-    bool :
+    bool
         A flag (`False`) to indicate that the dmc.Skeleton loading component should be
         hidden
     """
@@ -395,9 +406,9 @@ def handle_select_traces_click(
     Returns
     -------
     fig : plotly.graph_objects.Figure
-    None :
+    None
         Placeholder to reset 'clickData' in Dash callbacks.
-    bool :
+    bool
         A flag (`False`) to indicate that the dmc.Skeleton loading component should be
         hidden.
     """
@@ -664,9 +675,9 @@ def handle_update_view_click(
     -------
     fig : plotly.graph_objects.Figure
         The updated Plotly figure with applied user preferences.
-    None :
+    None
         Placeholder to reset 'clickData' in Dash callbacks.
-    bool :
+    bool
         A flag (`False`) to indicate that the dmc.Skeleton loading component should be
         hidden.
     """
@@ -909,9 +920,9 @@ def register_callbacks(app: dash.Dash) -> dash.Dash:
         -------
         fig : plotly.graph_objects.Figure
             The updated Plotly figure, either newly created or modified.
-        None :
+        None
             Placeholder to reset `clickData` in Dash (prevents stuck selections).
-        bool :
+        bool
             A flag (`False`) to hide the dmc.Skeleton loading component after plot
             rendering.
 
