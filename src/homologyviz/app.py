@@ -1,10 +1,15 @@
-"""Make HomologyViz GUI.
+"""
+Initialize and run the HomologyViz graphical user interface.
+
+This module serves as the entry point for launching the HomologyViz Dash application. It
+sets up the app layout, registers interactive callbacks, and opens the app in the default
+web browser.
 
 License
 -------
 This file is part of HomologyViz
 BSD 3-Clause License
-Copyright (c) 2024, Ivan Munoz Gutierrez
+Copyright (c) 2024, Iván Muñoz Gutiérrez
 """
 
 import webbrowser
@@ -20,7 +25,12 @@ from homologyviz.cli import parse_command_line_input
 
 
 def main() -> None:
-    """Make the app."""
+    """
+    Create and run the HomologyViz Dash application.
+
+    This function initializes the app, applies theming, builds the layout, registers all
+    callbacks, opens the browser, and starts the server.
+    """
     # Parse command line input
     parse_command_line_input()
 

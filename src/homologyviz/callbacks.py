@@ -15,7 +15,7 @@ License
 -------
 This file is part of HomologyViz
 BSD 3-Clause License
-Copyright (c) 2024, Ivan Muñoz Gutiérrez
+Copyright (c) 2024, Iván Muñoz Gutiérrez
 """
 
 import base64

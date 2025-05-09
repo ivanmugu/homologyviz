@@ -257,9 +257,9 @@ def plot_colorbar_legend(
     colorscale : list of tuple[float, str]
         A Plotly-compatible colorscale representing identity values.
     min_value : float
-        The minimum identity value represented in the current color scale (normalized 0–1).
+        The minimum identity value represented in the current color scale (normalized 0-1).
     max_value : float
-        The maximum identity value represented in the current color scale (normalized 0–1).
+        The maximum identity value represented in the current color scale (normalized 0-1).
     set_colorscale_to_extreme_homologies : bool, default=False
         If True, the color scale is stretched to the actual min and max identity values.
         If False, it uses a truncated range (e.g., based on a user-defined threshold).
