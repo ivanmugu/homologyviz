@@ -720,7 +720,7 @@ def register_callbacks(app: dash.Dash) -> dash.Dash:
         - Managing UI elements like buttons, skeleton loaders, and input states.
         - Generating downloadable figures in various formats.
         - Monitoring heartbeat pings from the frontend to detect tab closure and
-        gracefully shut down the app server when inactive.
+          gracefully shut down the app server when inactive.
 
     Parameters
     ----------

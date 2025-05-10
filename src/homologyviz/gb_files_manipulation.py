@@ -2,15 +2,15 @@
 Utilities for processing GenBank files and BLASTn results in HomologyViz.
 
 This module provides functions to:
-- Convert GenBank (.gb) files to FASTA format for BLASTn (`make_fasta_files`).
-- Run local BLASTn alignments and capture XML results (`run_blastn`,
-  `blastn_command_line`).
-- Parse BLASTn XML into structured DataFrames (`get_blast_metadata`,
-  `parse_blast_record`).
-- Extract sequence- and feature-level metadata from GenBank records
-  (`genbank_files_metadata_to_dataframes`, `parse_genbank_cds_to_df`).
-- Determine the longest sequence and homology bounds for plotting
-  (`get_longest_sequence_dataframe`, `find_lowest_and_highest_homology_dataframe`).
+    - Convert GenBank (.gb) files to FASTA format for BLASTn (`make_fasta_files`).
+    - Run local BLASTn alignments and capture XML results (`run_blastn`,
+      `blastn_command_line`).
+    - Parse BLASTn XML into structured DataFrames (`get_blast_metadata`,
+      `parse_blast_record`).
+    - Extract sequence- and feature-level metadata from GenBank records
+      (`genbank_files_metadata_to_dataframes`, `parse_genbank_cds_to_df`).
+    - Determine the longest sequence and homology bounds for plotting
+      (`get_longest_sequence_dataframe`, `find_lowest_and_highest_homology_dataframe`).
 
 These utilities underpin the data preparation pipeline for visualizing homology and gene
 annotations.
@@ -186,13 +186,13 @@ def genbank_files_metadata_to_dataframes(
     -------
     gb_df : pandas.DataFrame
         DataFrame with GenBank record-level metadata, including:
-        - file number, file path, file name, record name, accession, sequence length,
-          and plotting coordinates (`sequence_start`, `sequence_end`).
+            - file number, file path, file name, record name, accession, sequence length,
+              and plotting coordinates (`sequence_start`, `sequence_end`).
 
     cds_df : pandas.DataFrame
         DataFrame with CDS (gene) feature metadata from all GenBank files, including:
-        - file number, accession, gene name, product name, strand, color (if available),
-          and plotting coordinates (`start_plot`, `end_plot`).
+            - file number, accession, gene name, product name, strand, color (if
+              available), and plotting coordinates (`start_plot`, `end_plot`).
 
     Notes
     -----
@@ -697,15 +697,16 @@ def adjust_positions_alignments_df_center(
     ----------
     alignments : pandas.DataFrame
         DataFrame containing BLAST alignment summary metadata. Must include:
-        - 'alignment_number', 'query_len', 'hit_len'.
+            - 'alignment_number', 'query_len', 'hit_len'.
 
     regions : pandas.DataFrame
         DataFrame containing BLAST alignment region metadata. Must include:
-        - 'alignment_number', 'query_from_plot', 'query_to_plot',
-          'hit_from_plot', 'hit_to_plot'.
+            - 'alignment_number', 'query_from_plot', 'query_to_plot',
+              'hit_from_plot', 'hit_to_plot'.
 
     size_longest_sequence : int
-        Length of the longest sequence in the dataset. Used to calculate the centering shift.
+        Length of the longest sequence in the dataset. Used to calculate the centering
+        shift.
     """
     # Check if alignments are at the left. If not, reset the values to the left
     if not check_if_alignments_are_at_left(regions):
@@ -739,12 +740,12 @@ def adjust_positions_alignments_df_right(
     ----------
     alignments : pandas.DataFrame
         DataFrame containing summary metadata for each alignment. Must include:
-        - 'alignment_number', 'query_len', and 'hit_len'.
+            - 'alignment_number', 'query_len', and 'hit_len'.
 
     regions : pandas.DataFrame
         DataFrame with alignment region metadata. Must include:
-        - 'alignment_number', 'query_from_plot', 'query_to_plot',
-          'hit_from_plot', and 'hit_to_plot'.
+            - 'alignment_number', 'query_from_plot', 'query_to_plot',
+              'hit_from_plot', and 'hit_to_plot'.
 
     size_longest_sequence : int
         The length of the longest sequence in the dataset. Used to compute the

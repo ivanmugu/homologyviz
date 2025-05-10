@@ -6,8 +6,10 @@ genes, and visualize homology regions. Gene features are extracted from the `CDS
 of each GenBank file.
 
 Gene color customization is supported by adding a `/Color` qualifier to a `CDS` feature.
+
 For example:
     /Color="#00ff00"
+
 will render the gene in green. If no color is provided, HomologyViz defaults to yellow.
 
 License
@@ -860,12 +862,12 @@ def annotate_genes(fig: Figure, plot_parameters: PlotParameters) -> Figure:
         The Plotly figure to which gene annotations will be added.
     plot_parameters : PlotParameters
         An object containing configuration and metadata, including:
-        - `annotate_genes`: str, one of "top", "bottom", or "top-bottom"
-        - `annotate_genes_with`: str, column name to use for labels (e.g., "gene",
-          "product")
-        - `cds_df`: DataFrame with CDS metadata
-        - `number_gb_records`: int, number of GenBank files
-        - `y_separation`: int, spacing between sequence rows
+            - `annotate_genes`: str, one of "top", "bottom", or "top-bottom"
+            - `annotate_genes_with`: str, column name to use for labels (e.g., "gene",
+              "product")
+            - `cds_df`: DataFrame with CDS metadata
+            - `number_gb_records`: int, number of GenBank files
+            - `y_separation`: int, spacing between sequence rows
 
     Returns
     -------
