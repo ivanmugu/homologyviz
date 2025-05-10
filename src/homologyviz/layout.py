@@ -1,10 +1,17 @@
-"""Make the layout of HomologyViz GUI.
+"""
+Define the layout for the HomologyViz graphical user interface (GUI).
+
+This module builds the entire front-end layout of the HomologyViz Dash application using
+Dash Mantine Components (DMC), Dash Bootstrap Components (DBC), and Plotly Graphs. The GUI
+includes interactive controls to upload files, edit plots, adjust views, and export
+figures. It is structured into multiple tabs—Main, View, Edit, and Save—and integrates
+seamlessly with Dash callbacks.
 
 License
 -------
 This file is part of HomologyViz
 BSD 3-Clause License
-Copyright (c) 2024, Ivan Munoz Gutierrez
+Copyright (c) 2024, Iván Muñoz Gutiérrez
 """
 
 import dash_ag_grid as dag
@@ -23,6 +30,23 @@ TAB_LABEL_STYLE = {
 
 
 def make_dmc_select(**kwargs) -> Component:
+    """
+    Create a styled Dash Mantine Components (DMC) Select element.
+
+    This utility function returns a DMC Select component with predefined styling,
+    including fixed width, padding, and consistent font size across input, label,
+    and options. Additional keyword arguments are passed directly to the `dmc.Select`.
+
+    Parameters
+    ----------
+    **kwargs : dict
+        Additional properties to customize the Select component (e.g., `data`, `value`, `label`).
+
+    Returns
+    -------
+    Component
+        A configured `dmc.Select` component ready to be used in the Dash layout.
+    """
     return dmc.Select(
         w=200,
         size="md",
@@ -37,7 +61,18 @@ def make_dmc_select(**kwargs) -> Component:
 
 
 def list_sequential_color_scales() -> list[str]:
-    """Provide a list of Ploly's sequential color scales"""
+    """
+    List all Plotly sequential color scales.
+
+    This function returns the names of all sequential color scale options available
+    in `plotly.express.colors.sequential`. These color scales are typically used for
+    gradient-style visualizations such as heatmaps or homology identity shading.
+
+    Returns
+    -------
+    list of str
+        A list of sequential color scale names (e.g., "Viridis", "Blues", "Greys").
+    """
     sequential_color_scales = [
         name for name in dir(px.colors.sequential) if not name.startswith("_")
     ]
@@ -45,7 +80,25 @@ def list_sequential_color_scales() -> list[str]:
 
 
 def make_tab_main() -> dbc.Tab:
-    """Make tab Main."""
+    """
+    Create the 'Main' tab layout for the HomologyViz interface.
+
+    This tab provides users with the interface to upload GenBank files,
+    manage them in a table, and control the main plotting functions. It includes:
+
+    - A drag-and-drop upload area for `.gb` or `.gbk` files.
+    - An AG Grid table to display and manage uploaded file names.
+    - Buttons for:
+        - Deleting selected files
+        - Resetting the app
+        - Erasing the plot
+        - Drawing the plot
+
+    Returns
+    -------
+    dbc.Tab
+        A Dash Bootstrap Component Tab containing the UI layout for the "Main" tab.
+    """
     tab_main = dbc.Tab(
         label="Main",
         tab_id="tab-main",
@@ -193,7 +246,28 @@ def make_tab_main() -> dbc.Tab:
 
 
 def make_tab_view() -> dbc.Tab:
-    """Make tab view."""
+    """
+    Create the 'View' tab layout for the HomologyViz interface.
+
+    This tab allows users to customize how the DNA sequences and homology regions
+    are displayed in the plot. Users can adjust layout alignment, annotations,
+    and minimum homology length threshold.
+
+    Features included:
+    - Dropdowns for:
+        - Aligning sequences (left, center, right)
+        - Choosing gene info source (gene or product)
+        - Annotating genes (none, top, bottom, or both)
+        - Annotating DNA sequences (accession, name, or file name)
+        - Toggling the scale bar
+    - Number input to set the minimum homology length to display
+    - Button to apply view updates to the plot
+
+    Returns
+    -------
+    dbc.Tab
+        A Dash Bootstrap Component Tab containing the UI layout for the "View" tab.
+    """
     tab_view = dbc.Tab(
         label="View",
         tab_id="tab-view",
@@ -316,7 +390,31 @@ def make_tab_view() -> dbc.Tab:
 
 
 def make_tab_edit() -> dbc.Tab:
-    """Make tab edit."""
+    """
+    Create the 'Edit' tab layout for the HomologyViz interface.
+
+    This tab allows users to customize visual aspects of the plot, including:
+    - Selecting specific gene or homology traces and applying custom colors.
+    - Picking from a list of predefined colors using a color input.
+    - Changing the colormap used for homology identity shading.
+    - Adjusting the colormap range (e.g., truncating or setting extreme bounds).
+    - Previewing the selected colormap via a horizontal colorbar.
+    - Updating the plot to reflect all visual changes.
+
+    UI Elements:
+    - Color input with swatches and RGB support.
+    - Buttons for selecting items and applying color changes.
+    - Dropdown to choose a Plotly sequential colorscale.
+    - Static plot to preview the colorscale.
+    - Range slider to control truncation percentage.
+    - Button group to toggle between truncating or fixing homology value bounds.
+    - Button to apply the updated homology colormap.
+
+    Returns
+    -------
+    dbc.Tab
+        A Dash Bootstrap Component Tab containing the UI layout for the "Edit" tab.
+    """
     tab_edit = dbc.Tab(
         label="Edit",
         tab_id="tab-edit",
@@ -509,7 +607,23 @@ def make_tab_edit() -> dbc.Tab:
 
 
 def make_tab_save() -> dbc.Tab:
-    """Make tab save."""
+    """
+    Create the 'Save' tab layout for exporting the plotted figure.
+
+    This tab allows users to customize export settings and download the current plot
+    in various formats. It provides controls to define output dimensions and scale.
+
+    UI Elements:
+    - Format selector (PNG, JPG, PDF, SVG, or HTML).
+    - Numeric inputs for specifying figure width, height, and scale.
+    - Download button that triggers file generation and download.
+    - Dash `dcc.Download` component to handle file delivery.
+
+    Returns
+    -------
+    dbc.Tab
+        A Dash Bootstrap Component Tab containing the UI layout for the "Save" tab.
+    """
     tab_save = dbc.Tab(
         label="Save",
         tab_id="tab-save",
@@ -617,6 +731,28 @@ def make_tab_save() -> dbc.Tab:
 
 def create_layout(app: Dash) -> Dash:
     """Create app layout."""
+    """
+    Construct the full layout for the HomologyViz Dash app.
+
+    This function defines the GUI structure, including the control panel and plot display.
+    It uses Dash Mantine Components for styling and layout organization. The layout is
+    composed of two primary columns:
+    
+    - Left Column: Control panel with the HomologyViz logo and tabbed interface for
+      uploading files, customizing views, editing plots, and saving outputs.
+    - Right Column: Main plotting area displaying the generated figure using `dcc.Graph`,
+      wrapped in a `dmc.Skeleton` for loading effects.
+
+    Parameters
+    ----------
+    app : dash.Dash
+        The Dash application instance to which the layout will be assigned.
+
+    Returns
+    -------
+    dash.Dash
+        The Dash app with its layout fully configured and assigned.
+    """
     # Wrap layout with dmc.MantineProvider
     app.layout = dmc.MantineProvider(
         dmc.Grid(
