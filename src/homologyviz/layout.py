@@ -254,12 +254,13 @@ def make_tab_view() -> dbc.Tab:
     and minimum homology length threshold.
 
     Features included:
+
     - Dropdowns for:
-        - Aligning sequences (left, center, right)
-        - Choosing gene info source (gene or product)
-        - Annotating genes (none, top, bottom, or both)
-        - Annotating DNA sequences (accession, name, or file name)
-        - Toggling the scale bar
+      - Aligning sequences (left, center, right)
+      - Choosing gene info source (gene or product)
+      - Annotating genes (none, top, bottom, or both)
+      - Annotating DNA sequences (accession, name, or file name)
+      - Toggling the scale bar
     - Number input to set the minimum homology length to display
     - Button to apply view updates to the plot
 
@@ -394,6 +395,7 @@ def make_tab_edit() -> dbc.Tab:
     Create the 'Edit' tab layout for the HomologyViz interface.
 
     This tab allows users to customize visual aspects of the plot, including:
+
     - Selecting specific gene or homology traces and applying custom colors.
     - Picking from a list of predefined colors using a color input.
     - Changing the colormap used for homology identity shading.
@@ -402,6 +404,7 @@ def make_tab_edit() -> dbc.Tab:
     - Updating the plot to reflect all visual changes.
 
     UI Elements:
+
     - Color input with swatches and RGB support.
     - Buttons for selecting items and applying color changes.
     - Dropdown to choose a Plotly sequential colorscale.
@@ -614,6 +617,7 @@ def make_tab_save() -> dbc.Tab:
     in various formats. It provides controls to define output dimensions and scale.
 
     UI Elements:
+
     - Format selector (PNG, JPG, PDF, SVG, or HTML).
     - Numeric inputs for specifying figure width, height, and scale.
     - Download button that triggers file generation and download.
@@ -730,18 +734,17 @@ def make_tab_save() -> dbc.Tab:
 
 
 def create_layout(app: Dash) -> Dash:
-    """Create app layout."""
     """
     Construct the full layout for the HomologyViz Dash app.
 
     This function defines the GUI structure, including the control panel and plot display.
     It uses Dash Mantine Components for styling and layout organization. The layout is
     composed of two primary columns:
-    
+
     - Left Column: Control panel with the HomologyViz logo and tabbed interface for
       uploading files, customizing views, editing plots, and saving outputs.
-    - Right Column: Main plotting area displaying the generated figure using `dcc.Graph`,
-      wrapped in a `dmc.Skeleton` for loading effects.
+    - Right Column: Main plotting area displaying the generated figure using
+      `dcc.Graph`, wrapped in a `dmc.Skeleton` for loading effects.
 
     Parameters
     ----------

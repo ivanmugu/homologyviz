@@ -27,7 +27,6 @@ Copyright (c) 2024, Iván Muñoz Gutiérrez
 
 import bezier
 import numpy as np
-import plotly.graph_objects as go
 
 
 class RectangleCurveHeight:
@@ -65,23 +64,6 @@ class RectangleCurveHeight:
     num_points : int
         Number of points used to evaluate and render the Bézier curves.
 
-    Methods
-    -------
-    coordinates_rectangle_height_bezier() -> tuple[np.ndarray, np.ndarray]
-        Returns the full set of x and y coordinates to plot the curved rectangle.
-
-    get_bezier_nodes_vertical(...) -> tuple[np.ndarray, np.ndarray]
-        Constructs a vertical Bézier curve between two points using provided proportions.
-
-    get_bezier_curve(curve, num_points=100) -> tuple[np.ndarray, np.ndarray]
-        Samples points along a Bézier curve object.
-
-    y_points_bezier_vertical(...) -> list[float]
-        Generates evenly spaced y-values for vertical Bézier control points.
-
-    x_points_bezier_vertical(...) -> list[float]
-        Generates proportionally spaced x-values for vertical Bézier control points.
-
     Notes
     -----
     The Bézier curve rendering is powered by the `bezier` Python library. Ensure it is
@@ -114,10 +96,10 @@ class RectangleCurveHeight:
 
         Returns
         -------
-        tuple[numpy.ndarray, numpy.ndarray]
+        tuple : [numpy.ndarray, numpy.ndarray]
             A tuple containing:
-                - x_points: The x-coordinates of the polygon.
-                - y_points: The y-coordinates of the polygon.
+            - x_points: The x-coordinates of the polygon.
+            - y_points: The y-coordinates of the polygon.
 
         Notes
         -----
@@ -165,7 +147,7 @@ class RectangleCurveHeight:
 
         Returns
         -------
-        tuple[numpy.ndarray, numpy.ndarray]
+        tuple : [numpy.ndarray, numpy.ndarray]
             A tuple containing the x and y coordinates of the evaluated Bézier curve.
         """
         s_vals = np.linspace(0.0, 1.0, num_points)
@@ -198,13 +180,14 @@ class RectangleCurveHeight:
         y2 : float
             Ending y-coordinate of the curve.
         proportions : list of float, optional
-            List of float values between 0 and 1 representing how control points are spaced
-            along the x-axis. Must start at 0 and end at 1.
+            List of float values between 0 and 1 representing how control points are
+            spaced along the x-axis. Must start at 0 and end at 1.
 
         Returns
         -------
-        tuple[numpy.ndarray, numpy.ndarray]
-            The x and y coordinates of the Bézier curve evaluated at evenly spaced intervals.
+        tuple : [numpy.ndarray, numpy.ndarray]
+            The x and y coordinates of the Bézier curve evaluated at evenly spaced
+            intervals.
         """
         degree = len(proportions) - 1
         x_coordinates = self.x_points_bezier_vertical(x1, x2, proportions)
@@ -237,7 +220,7 @@ class RectangleCurveHeight:
 
         Returns
         -------
-        list of float
+        list : [float]
             A list of y-coordinates evenly spaced between `y1` and `y2`.
         """
         delta = y2 - y1
@@ -266,45 +249,15 @@ class RectangleCurveHeight:
         x2 : float
             Ending x-coordinate of the curve.
         proportions : list of float, default=[0, 0.1, 0.5, 0.9, 1]
-            List of normalized positions (between 0 and 1) to interpolate between `x1` and `x2`.
-            Must start with 0 and end with 1. These determine the curvature profile.
+            List of normalized positions (between 0 and 1) to interpolate between `x1`
+            and `x2`. Must start with 0 and end with 1. These determine the curvature
+            profile.
 
         Returns
         -------
-        list of float
-            A list of x-coordinates for Bézier control points, matching the provided proportions.
+        list : [float]
+            A list of x-coordinates for Bézier control points, matching the provided
+            proportions.
         """
         delta = x2 - x1
         return [x1 + proportion * delta for proportion in proportions]
-
-
-if __name__ == "__main__":
-    proportions = [0, 0.1, 0.5, 0.9, 1]
-    x_coordinates = [0, 1, 1.5, 0.5]
-    y_coordinates = [10, 10, 0, 0]
-    rectangle = RectangleCurveHeight(
-        x_coordinates=x_coordinates,
-        y_coordinates=y_coordinates,
-        proportions=proportions,
-    )
-    # Get coordinates for rectange with a bezier height
-    x_points, y_points = rectangle.coordinates_rectangle_height_bezier()
-    # Create figure
-    fig = go.Figure()
-
-    fig.add_trace(
-        go.Scatter(
-            x=x_points, y=y_points, mode="lines", fill="toself", line=dict(color="blue")
-        )
-    )
-
-    # Update layout
-    fig.update_layout(
-        title="Rectangle with Bezier Curved Sides and Straight Top/Bottom",
-        xaxis_title="X-axis",
-        yaxis_title="Y-axis",
-        showlegend=False,
-    )
-
-    # Show figure
-    fig.show()
