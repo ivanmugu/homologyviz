@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "homologyviz"
-version = "0.1.13"
+version = "0.1.14"
 authors = [
     { name = "Ivan Munoz-Gutierrez", email = "ivan.munoz.gutierrez@gmail.com" },
 ]
@@ -40,6 +40,8 @@ dependencies = [
     "matplotlib",
     "plotly",
     "pandas",
+    "pytest",
+    "pytest-cov",
 ]
 
 [project.urls]
@@ -48,3 +50,7 @@ Repository = "https://github.com/ivanmugu/msplotly.git"
 [project.scripts]
 hviz = "homologyviz.app:main"
 homologyviz = "homologyviz.app:main"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "--cov=homologyviz --cov-report=term-missing -v"

@@ -44,6 +44,10 @@ from homologyviz.gb_files_manipulation import get_longest_sequence_dataframe
 # logger = logging.getLogger(__name__)
 
 
+# TODO: If we change a color in the edit tab, the changes are return to the
+# original colors when performing any change in the view tab.
+
+
 class HeartBeatsParameters:
     """Parameters to monitor heart beats of the Dash app.
 

@@ -19,7 +19,6 @@ BSD 3-Clause License
 Copyright (c) 2024, Ivan Muñoz Gutiérrez
 """
 
-import math
 from pathlib import Path
 from pandas import DataFrame
 
@@ -1115,33 +1114,33 @@ def change_homology_color(
     return figure
 
 
-def round_up_to_nearest_significant_digit(number: float) -> int:
-    """
-    Round up a float to the nearest significant digit.
+# def round_up_to_nearest_significant_digit(number: float) -> int:
+#     """
+#     Round up a float to the nearest significant digit.
 
-    This function rounds a given number up to the next multiple of the most significant
-    power of ten. It is useful for generating clean scale values or axis limits in plots.
-    This function is used in HomologyViz to show the scale bar value.
+#     This function rounds a given number up to the next multiple of the most significant
+#     power of ten. It is useful for generating clean scale values or axis limits in plots.
+#     This function is used in HomologyViz to show the scale bar value.
 
-    Examples
-    --------
-    >>> round_up_to_nearest_significant_digit(142)
-    200
+#     Examples
+#     --------
+#     >>> round_up_to_nearest_significant_digit(142)
+#     200
 
-    Parameters
-    ----------
-    number : float
-        The number to round up.
+#     Parameters
+#     ----------
+#     number : float
+#         The number to round up.
 
-    Returns
-    -------
-    int
-        The input number rounded up to the nearest significant digit.
-    """
-    # Determine the nearest power of ten (e.g., 1000, 100, 10, etc.)
-    power_of_ten = 10 ** math.floor(math.log10(number))
-    # Round up to the next multiple of that power
-    return math.ceil(number / power_of_ten) * power_of_ten
+#     Returns
+#     -------
+#     int
+#         The input number rounded up to the nearest significant digit.
+#     """
+#     # Determine the nearest power of ten (e.g., 1000, 100, 10, etc.)
+#     power_of_ten = 10 ** math.floor(math.log10(number))
+#     # Round up to the next multiple of that power
+#     return math.ceil(number / power_of_ten) * power_of_ten
 
 
 def plot_scale(
@@ -1172,7 +1171,7 @@ def plot_scale(
     # TODO: Dynamically position scale bar annotation based on y_separation to avoid
     # overlapping with bottom traces.
 
-    scale_length: int = round_up_to_nearest_significant_digit(
+    scale_length: int = misc.round_up_to_nearest_significant_digit(
         length_longest_sequence / 5
     )
     color: str = "rgba(0, 0, 0, 1)" if add_scale else "rgba(0,0,0,0)"
