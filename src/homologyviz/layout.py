@@ -277,6 +277,24 @@ def make_tab_view() -> dbc.Tab:
             dbc.Row(
                 [
                     dbc.Row(
+                        dmc.Button(
+                            "Update View",
+                            id="update-annotations",
+                            leftSection=DashIconify(
+                                icon="radix-icons:update",
+                                width=25,
+                            ),
+                            color="#b303b3",
+                            size="md",
+                            style={
+                                "fontSize": "14px",
+                                "width": "200px",
+                                "padding": "0",
+                            },
+                        ),
+                        className="d-flex justify-content-evenly mt-3 mb-1",
+                    ),
+                    dbc.Row(
                         make_dmc_select(
                             label="Align Plot",
                             id="align-plot",
@@ -374,24 +392,6 @@ def make_tab_view() -> dbc.Tab:
                         ),
                         className="d-flex justify-content-evenly mb-1",
                     ),
-                    dbc.Row(
-                        dmc.Button(
-                            "Update View",
-                            id="update-annotations",
-                            leftSection=DashIconify(
-                                icon="radix-icons:update",
-                                width=25,
-                            ),
-                            color="#b303b3",
-                            size="md",
-                            style={
-                                "fontSize": "14px",
-                                "width": "200px",
-                                "padding": "0",
-                            },
-                        ),
-                        className="d-flex justify-content-evenly mt-2",
-                    ),
                 ],
                 className="d-flex justify-content-center mt-2",
                 style={"margin": "5px"},
@@ -400,6 +400,295 @@ def make_tab_view() -> dbc.Tab:
         style={"margin": "5px"},
     )
     return tab_view
+
+
+def make_accordion_item_edit_color() -> dmc.AccordionItem:
+    """
+    Create a Dash Mantine Components AccordionItem for editing the color of selected
+    items.
+
+    This UI component includes:
+    - A `ColorInput` widget for selecting a color (RGB format) from predefined swatches
+      or custom values.
+    - A "Select Items" button to enable item selection mode within the plot.
+    - A "Change Color" button to apply the selected color to the currently selected items.
+    - A hidden `dcc.Store` to keep track of the selection mode state (enabled/disabled).
+
+    Returns
+    -------
+    dmc.AccordionItem
+        A fully constructed AccordionItem containing the color editing UI for selected
+        plot items.
+
+    Notes
+    -----
+    - The component assumes that callbacks elsewhere in the app handle selection logic and
+      color application.
+    - Styling is handled using Bootstrap classes (`d-flex`, `justify-content-evenly`,
+      `my-2`, etc.) and inline styles.
+    - Color swatches include commonly used RGB values to improve usability.
+
+    Component IDs
+    -------------
+    - "color-input": The RGB color selector input.
+    - "select-items-button": Triggers selection mode for interactive elements.
+    - "select-items-button-store": A hidden Store tracking whether selection mode is
+      active.
+    - "change-gene-color-button": Applies the selected color to all currently selected
+      items.
+    """
+    return dmc.AccordionItem(
+        [
+            dmc.AccordionControl("Edit Color of Selected Items"),
+            dmc.AccordionPanel(
+                dbc.Row(
+                    [
+                        dbc.Row(
+                            [
+                                dmc.ColorInput(
+                                    id="color-input",
+                                    # label="Edit Color of Selected Items",
+                                    value="rgb(0, 255, 255)",
+                                    w=200,
+                                    format="rgb",
+                                    swatches=[
+                                        "rgb(255,0,255)",
+                                        "rgb(0,255,255)",
+                                        "rgb(255,26,0)",
+                                        "rgb(255,116,0)",
+                                        "rgb(255,255,0)",
+                                        "rgb(0,255,0)",
+                                        "rgb(151,59,255)",
+                                        "rgb(0,0,0)",
+                                    ],
+                                    size="md",
+                                    style={"padding": "0"},
+                                    styles={
+                                        "input": {"fontSize": "14px"},
+                                        "label": {"fontSize": "14px"},
+                                    },
+                                ),
+                            ],
+                            className="d-flex justify-content-evenly my-2",
+                        ),
+                        dbc.Row(
+                            [
+                                dmc.Button(
+                                    "Select Items",
+                                    id="select-items-button",
+                                    leftSection=DashIconify(
+                                        icon="material-symbols-light:arrow-selector-tool-outline",
+                                        width=30,
+                                    ),
+                                    color="#3a7ebf",
+                                    size="md",
+                                    variant="outline",
+                                    style={
+                                        "fontSize": "12px",
+                                        "width": "200px",
+                                    },
+                                ),
+                                dcc.Store(
+                                    id="select-items-button-store",
+                                    data=False,
+                                ),
+                            ],
+                            className="d-flex justify-content-evenly mb-2",
+                        ),
+                        dbc.Row(
+                            [
+                                dmc.Button(
+                                    "Change Color",
+                                    id="change-gene-color-button",
+                                    leftSection=DashIconify(
+                                        icon="oui:color",
+                                        width=20,
+                                    ),
+                                    color="#b303b3",
+                                    size="md",
+                                    style={
+                                        "fontSize": "12px",
+                                        "width": "200px",
+                                    },
+                                ),
+                            ],
+                            className="d-flex justify-content-evenly mb-2",
+                        ),
+                    ],
+                    className="d-flex justify-content-center my-1",
+                ),
+            ),
+        ],
+        value="edit-color",
+    )
+
+
+def make_accordion_item_homology() -> dmc.AccordionItem:
+    """
+    Create a Dash Mantine Components AccordionItem for customizing homology region colors.
+
+    This UI component allows users to:
+    - Select a sequential color scale for homology identity shading.
+    - Preview the selected colormap in a static Plotly graph.
+    - Adjust the effective identity range using a range slider.
+    - Choose between truncating the colormap or setting it to the full (extreme) homology
+      range.
+    - Apply changes to the visualization with a button click.
+
+    Returns
+    -------
+    dmc.AccordionItem
+        A fully constructed AccordionItem containing UI controls for modifying the
+        homology color mapping in the plot.
+
+    Notes
+    -----
+    - The dropdown menu (`make_dmc_select`) uses available sequential color scales.
+    - A small preview of the current color scale is shown via a static `dcc.Graph`.
+    - The range slider allows users to limit the range of identity values visualized
+      (e.g., 0-75%).
+    - Two buttons ("Truncate" and "Extreme") toggle how the color scale range is handled.
+    - The "Update Homologies" button triggers a callback to re-render regions with the
+      selected color scale and identity thresholds.
+
+    Component IDs
+    -------------
+    - "color-scale": Dropdown for selecting a colormap.
+    - "color-scale-display": Plotly graph displaying a preview of the colormap.
+    - "range-slider": Slider to adjust the visible range of homology identity.
+    - "truncate-colorscale-button": Button indicating colormap is truncated.
+    - "extreme-homologies-button": Button for stretching the colormap to extremes.
+    - "is-set-to-extreme-homologies": Hidden Store tracking colormap state.
+    - "change-homology-color-button": Button to apply updated color mapping.
+    """
+    return dmc.AccordionItem(
+        [
+            dmc.AccordionControl("Change Homology Colormap"),
+            dmc.AccordionPanel(
+                dbc.Row(
+                    [
+                        dbc.Row(
+                            make_dmc_select(
+                                id="color-scale",
+                                value="Greys",
+                                data=list_sequential_color_scales(),
+                            ),
+                            className="d-flex justify-content-evenly mt-2 mb-2",
+                        ),
+                        dbc.Row(
+                            html.Div(
+                                dcc.Graph(
+                                    id="color-scale-display",
+                                    config={
+                                        "displayModeBar": False,
+                                        "staticPlot": True,
+                                    },
+                                    style={"width": "100%"},
+                                    className="border",
+                                ),
+                                style={"width": "90%"},
+                            ),
+                            className="d-flex justify-content-center mt-2 mb-1",
+                        ),
+                        dbc.Row(
+                            html.Div(
+                                dmc.RangeSlider(
+                                    id="range-slider",
+                                    value=[0, 75],
+                                    marks=[
+                                        {"value": 25, "label": "25%"},
+                                        {"value": 50, "label": "50%"},
+                                        {"value": 75, "label": "75%"},
+                                    ],
+                                    size="md",
+                                    style={
+                                        "width": "90%",
+                                        "fontSize": "14px",
+                                    },
+                                ),
+                                className="d-flex justify-content-center mt-1 mb-3",
+                            ),
+                        ),
+                        dbc.Row(
+                            [
+                                html.Span(
+                                    "Truncate or Set Colormap to Extreme Homologies"
+                                ),
+                            ],
+                            className="d-flex justify-content-center text-left mt-3 mb-0",
+                            style={"fontSize": "14px", "width": "90%"},
+                        ),
+                        dbc.Row(
+                            dmc.ButtonGroup(
+                                [
+                                    dmc.Button(
+                                        "Truncate",
+                                        id="truncate-colorscale-button",
+                                        variant="filled",
+                                        size="md",
+                                        style={
+                                            "pointer-events": "none",
+                                        },
+                                        styles={
+                                            "root": {
+                                                "fontSize": "14px",
+                                            }
+                                        },
+                                    ),
+                                    dmc.Button(
+                                        "Extreme",
+                                        id="extreme-homologies-button",
+                                        variant="subtle",
+                                        size="md",
+                                        styles={
+                                            "root": {
+                                                "fontSize": "14px",
+                                            }
+                                        },
+                                    ),
+                                    dcc.Store(
+                                        id="is-set-to-extreme-homologies",
+                                        data=False,
+                                    ),
+                                ],
+                                style={
+                                    "padding": "0px",
+                                    "borderWidth": "1px",
+                                    "borderStyle": "solid",
+                                    "borderColor": "#424242",
+                                    "borderRadius": "5px",
+                                    "backgroundColor": "#2e2e2e",
+                                },
+                            ),
+                            style={"width": "85%"},
+                            className="d-flex justify-content-evenly mb-2",
+                        ),
+                        dbc.Row(
+                            [
+                                dmc.Button(
+                                    "Update Homologies",
+                                    id="change-homology-color-button",
+                                    leftSection=DashIconify(
+                                        icon="radix-icons:update",
+                                        width=25,
+                                    ),
+                                    color="#b303b3",
+                                    size="md",
+                                    style={
+                                        "fontSize": "14px",
+                                        "width": "200px",
+                                    },
+                                ),
+                            ],
+                            className="d-flex justify-content-evenly my-2",
+                        ),
+                    ],
+                    className="d-flex justify-content-center mt-2",
+                ),
+            ),
+        ],
+        value="edit-homology-regions",
+    )
 
 
 def make_tab_edit() -> dbc.Tab:
@@ -435,186 +724,13 @@ def make_tab_edit() -> dbc.Tab:
         tab_id="tab-edit",
         label_style=TAB_LABEL_STYLE,
         children=[
-            dbc.Row(  # ==== SELECT AND CHANGE COLOR SECTION =========================== #
-                [
-                    dmc.Divider(className="mt-2 mb-1"),
-                    dbc.Row(
-                        [
-                            dmc.ColorInput(
-                                id="color-input",
-                                label="Edit Color of Selected Items",
-                                value="rgb(0, 255, 255)",
-                                w=200,
-                                format="rgb",
-                                swatches=[
-                                    "rgb(255,0,255)",
-                                    "rgb(0,255,255)",
-                                    "rgb(255,26,0)",
-                                    "rgb(255,116,0)",
-                                    "rgb(255,255,0)",
-                                    "rgb(0,255,0)",
-                                    "rgb(151,59,255)",
-                                    "rgb(0,0,0)",
-                                ],
-                                size="md",
-                                style={"padding": "0"},
-                                styles={
-                                    "input": {"fontSize": "14px"},
-                                    "label": {"fontSize": "14px"},
-                                },
-                            ),
-                        ],
-                        className="d-flex justify-content-evenly my-2",
-                    ),
-                    dbc.Row(
-                        [
-                            dmc.Button(
-                                "Select Items",
-                                id="select-items-button",
-                                leftSection=DashIconify(
-                                    icon="material-symbols-light:arrow-selector-tool-outline",
-                                    width=30,
-                                ),
-                                color="#3a7ebf",
-                                size="md",
-                                variant="outline",
-                                style={"fontSize": "12px", "width": "200px"},
-                            ),
-                            dcc.Store(id="select-items-button-store", data=False),
-                        ],
-                        className="d-flex justify-content-evenly mb-2",
-                    ),
-                    dbc.Row(
-                        [
-                            dmc.Button(
-                                "Change Color",
-                                id="change-gene-color-button",
-                                leftSection=DashIconify(
-                                    icon="oui:color",
-                                    width=20,
-                                ),
-                                color="#b303b3",
-                                size="md",
-                                style={"fontSize": "12px", "width": "200px"},
-                            ),
-                        ],
-                        className="d-flex justify-content-evenly mb-2",
-                    ),
+            dmc.Accordion(
+                children=[
+                    make_accordion_item_edit_color(),
+                    make_accordion_item_homology(),
                 ],
-                className="d-flex justify-content-center my-1",
-                style={"margin": "2px"},
-            ),
-            dbc.Row(  # ==== SELECT COLORMAP FOR HOMOLOGY REGIONS ====================== #
-                [
-                    dmc.Divider(className="my-1"),
-                    dbc.Row(
-                        make_dmc_select(
-                            id="color-scale",
-                            label="Change Colormap of Homologies",
-                            value="Greys",
-                            data=list_sequential_color_scales(),
-                        ),
-                        className="d-flex justify-content-evenly mt-2 mb-2",
-                    ),
-                    dbc.Row(
-                        html.Div(
-                            dcc.Graph(
-                                id="color-scale-display",
-                                config={"displayModeBar": False, "staticPlot": True},
-                                style={"width": "100%"},
-                                className="border",
-                            ),
-                            style={"width": "90%"},
-                        ),
-                        className="d-flex justify-content-center mt-2 mb-1",
-                    ),
-                    dbc.Row(
-                        html.Div(
-                            dmc.RangeSlider(
-                                id="range-slider",
-                                value=[0, 75],
-                                marks=[
-                                    {"value": 25, "label": "25%"},
-                                    {"value": 50, "label": "50%"},
-                                    {"value": 75, "label": "75%"},
-                                ],
-                                size="md",
-                                style={"width": "90%", "fontSize": "14px"},
-                            ),
-                            className="d-flex justify-content-center mt-1 mb-3",
-                        ),
-                    ),
-                    dbc.Row(
-                        [
-                            html.Span("Truncate or Set Colormap to Extreme Homologies"),
-                        ],
-                        className="d-flex justify-content-center text-left mt-3 mb-0",
-                        style={"fontSize": "14px", "width": "90%"},
-                    ),
-                    dbc.Row(
-                        dmc.ButtonGroup(
-                            [
-                                dmc.Button(
-                                    "Truncate",
-                                    id="truncate-colorscale-button",
-                                    variant="filled",
-                                    size="md",
-                                    style={
-                                        "pointer-events": "none",
-                                    },
-                                    styles={
-                                        "root": {
-                                            "fontSize": "14px",
-                                        }
-                                    },
-                                ),
-                                dmc.Button(
-                                    "Extreme Homol.",
-                                    id="extreme-homologies-button",
-                                    variant="subtle",
-                                    size="md",
-                                    styles={
-                                        "root": {
-                                            "fontSize": "14px",
-                                        }
-                                    },
-                                ),
-                                dcc.Store(
-                                    id="is-set-to-extreme-homologies",
-                                    data=False,
-                                ),
-                            ],
-                            style={
-                                "padding": "0px",
-                                "borderWidth": "1px",
-                                "borderStyle": "solid",
-                                "borderColor": "#424242",
-                                "borderRadius": "5px",
-                                "backgroundColor": "#2e2e2e",
-                            },
-                        ),
-                        style={"width": "85%"},
-                        className="d-flex justify-content-evenly mb-2",
-                    ),
-                    dbc.Row(
-                        [
-                            dmc.Button(
-                                "Update Homologies",
-                                id="change-homology-color-button",
-                                leftSection=DashIconify(
-                                    icon="radix-icons:update",
-                                    width=25,
-                                ),
-                                color="#b303b3",
-                                size="md",
-                                style={"fontSize": "14px", "width": "200px"},
-                            ),
-                        ],
-                        className="d-flex justify-content-evenly my-2",
-                    ),
-                ],
-                className="d-flex justify-content-center mt-2",
-                style={"margin": "2px"},
+                variant="separated",
+                className="mt-3",
             ),
         ],
     )
