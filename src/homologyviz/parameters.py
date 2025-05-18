@@ -63,9 +63,10 @@ class PlotParameters:
     annotate_genes_with : str
         Annotate genes using GenBank file metadata stored in `CDS gene` or `CDS product`.
         Options are `gene` and `product`.
-    stright_homology_regions : bool
-        It this parameter is the to False, the shadows reprenting homologies with have a
-        Bezier shape.
+    style_homology_regions : str
+        Homology connector style. Options:
+        - straight : the shadows representing homologies will have straight lines.
+        - curve : the shadows reprenting homologies will have a Bezier shape.
     minimium_homology_lenght : int
         This number represent the lenght of the minimum homology shown in the plot. For
         example, if it is set to 500, all homologies spanning 500 or more nucleotides are
@@ -112,7 +113,7 @@ class PlotParameters:
         annotate_sequences: None | str = None,
         annotate_genes: None | str = None,
         annotate_genes_with: None | str = None,
-        straight_homology_regions: None | bool = None,
+        style_homology_regions: None | str = None,
         minimum_homology_length: None | int = None,
         add_scale_bar: None | str = None,
         selected_traces: None | list = None,
@@ -137,7 +138,7 @@ class PlotParameters:
         self.annotate_sequences = annotate_sequences
         self.annotate_genes = annotate_genes
         self.annotate_genes_with = annotate_genes_with
-        self.straight_homology_regions = straight_homology_regions
+        self.style_homology_regions = style_homology_regions
         self.minimum_homology_length = minimum_homology_length
         self.add_scale_bar = add_scale_bar
         self.selected_traces = selected_traces

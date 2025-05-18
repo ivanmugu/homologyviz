@@ -130,6 +130,7 @@ def handle_plot_button_click(
     annotate_sequences_state: str,
     annotate_genes_state: str,
     use_genes_info_from_state: str,
+    homology_style_state: str,
     minimum_homology_length_state: int,
     scale_bar_state: str,
 ) -> tuple[Figure, None, bool]:
@@ -161,9 +162,11 @@ def handle_plot_button_click(
     annotate_sequences_state : str
         Whether and how to annotate sequence names.
     annotate_genes_state : str
-        whether gene features shold be annotated.
+        Whether gene features shold be annotated.
     use_genes_info_from_state : str
         Indicate source for genes annotations (e.g. "CDS product", "CDS gene").
+    homology_style_state : str
+        Whether the connections between homology regions are straight or curved (Bezier).
     minimum_homology_length_state : int
         Minimum length of homology region to be displayed.
     scale_bar_state : str
@@ -204,7 +207,7 @@ def handle_plot_button_click(
     dash_parameters.annotate_sequences = annotate_sequences_state
     dash_parameters.annotate_genes = annotate_genes_state
     dash_parameters.annotate_genes_with = use_genes_info_from_state
-    dash_parameters.straight_homology_regions = "straight"
+    dash_parameters.style_homology_regions = homology_style_state
     dash_parameters.minimum_homology_length = minimum_homology_length_state
     dash_parameters.add_scale_bar = scale_bar_state
     dash_parameters.selected_traces = []
@@ -471,6 +474,31 @@ def align_plot(
     return fig
 
 
+def update_homology_regions(
+    figure_state: dict,
+    dash_parameters: PlotParameters,
+    align_plot_state: str,
+    homology_style_state: str,
+) -> Figure:
+    print(f"homology style state: {homology_style_state}")
+    # Check if user wants to change the plot location and homology style
+    if (
+        align_plot_state != dash_parameters.alignments_position
+        or homology_style_state != dash_parameters.style_homology_regions
+    ):
+        # Update dash_parameters
+        dash_parameters.alignments_position = align_plot_state
+        dash_parameters.style_homology_regions = homology_style_state
+        # Make figure with new plot loation and style
+        fig = plt.make_figure(dash_parameters)
+
+    # Otherwise, convert figure_state dictionary into a Figure object
+    else:
+        fig = Figure(data=figure_state["data"], layout=figure_state["layout"])
+
+    return fig
+
+
 def update_genes_annotations(
     fig: Figure,
     dash_parameters: PlotParameters,
@@ -641,6 +669,7 @@ def handle_update_view_click(
     figure_state: dict,
     dash_parameters: PlotParameters,
     align_plot_state: str,
+    homology_style_state: str,
     use_genes_info_from_state: str,
     annotate_genes_state: str,
     annotate_sequences_state: str,
@@ -664,6 +693,8 @@ def handle_update_view_click(
     align_plot_state : str
         Layout preference for positioning the alignments in the plot (e.g. "left",
         "center", "right").
+    homology_style_state : str
+        Whether the connections between homology regions are straight or curved (Bezier).
     use_genes_info_from_state : str
         Indicate source for genes annotations (e.g. "CDS product", "CDS gene").
     annotate_genes_state : str
@@ -686,7 +717,13 @@ def handle_update_view_click(
         hidden.
     """
     # Align plot to the left, center, or right
-    fig = align_plot(figure_state, dash_parameters, align_plot_state)
+    # fig = align_plot(figure_state, dash_parameters, align_plot_state)
+    fig = update_homology_regions(
+        figure_state,
+        dash_parameters,
+        align_plot_state,
+        homology_style_state,
+    )
 
     # Update genes annotations
     fig = update_genes_annotations(
@@ -834,6 +871,7 @@ def register_callbacks(app: dash.Dash) -> dash.Dash:
             State("color-scale", "value"),
             State("range-slider", "value"),
             State("align-plot", "value"),
+            State("homology-style", "value"),
             State("minimum-homology-length", "value"),
             State("is-set-to-extreme-homologies", "data"),
             State("annotate-sequences", "value"),
@@ -858,6 +896,7 @@ def register_callbacks(app: dash.Dash) -> dash.Dash:
         color_scale_state: str,
         range_slider_state: list[int, int],
         align_plot_state: str,
+        homology_style_state: str,
         minimum_homology_length_state: int,
         is_set_to_extreme_homologies: bool,
         annotate_sequences_state: str,
@@ -907,6 +946,8 @@ def register_callbacks(app: dash.Dash) -> dash.Dash:
             The selected range of identity percentages used for color scaling.
         align_plot_state : str
             Alignment layout setting (e.g., "left", "center", "right").
+        homology_style_state : str
+            Whether the style of homology connections are straight or curve (Bezier).
         minimum_homology_length_state : int
             Minimum homology length (in bp) to display in the plot.
         is_set_to_extreme_homologies : bool
@@ -955,6 +996,7 @@ def register_callbacks(app: dash.Dash) -> dash.Dash:
                 annotate_sequences_state,
                 annotate_genes_state,
                 use_genes_info_from_state,
+                homology_style_state,
                 minimum_homology_length_state,
                 scale_bar_state,
             )
@@ -964,6 +1006,22 @@ def register_callbacks(app: dash.Dash) -> dash.Dash:
             dash_parameters.reset()
             # Return an empty figure, None for clickdata, and False for skeleton
             return {}, None, False
+
+        # ============================================================================== #
+        # TAB VIEW
+        # Update Annotations and View
+        if button_id == "update-annotations":
+            return handle_update_view_click(
+                figure_state,
+                dash_parameters,
+                align_plot_state,
+                homology_style_state,
+                use_genes_info_from_state,
+                annotate_genes_state,
+                annotate_sequences_state,
+                scale_bar_state,
+                minimum_homology_length_state,
+            )
 
         # ============================================================================== #
         # TAB EDIT
@@ -995,21 +1053,6 @@ def register_callbacks(app: dash.Dash) -> dash.Dash:
                 figure_state,
                 dash_parameters,
                 click_data,
-            )
-
-        # ============================================================================== #
-        # TAB VIEW
-        # Update Annotations and View
-        if button_id == "update-annotations":
-            return handle_update_view_click(
-                figure_state,
-                dash_parameters,
-                align_plot_state,
-                use_genes_info_from_state,
-                annotate_genes_state,
-                annotate_sequences_state,
-                scale_bar_state,
-                minimum_homology_length_state,
             )
 
         return figure_state, None, False

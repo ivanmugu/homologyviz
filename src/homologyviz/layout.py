@@ -291,6 +291,18 @@ def make_tab_view() -> dbc.Tab:
                     ),
                     dbc.Row(
                         make_dmc_select(
+                            label="Homology Connector Style",
+                            id="homology-style",
+                            value="straight",
+                            data=[
+                                {"value": "straight", "label": "Straight"},
+                                {"value": "curve", "label": "Curve"},
+                            ],
+                        ),
+                        className="d-flex justify-content-evenly my-1",
+                    ),
+                    dbc.Row(
+                        make_dmc_select(
                             label="Get Genes Info From",
                             id="use-genes-info-from",
                             value="gene",

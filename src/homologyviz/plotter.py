@@ -35,7 +35,6 @@ from homologyviz import gb_files_manipulation as genbank
 from homologyviz import miscellaneous as misc
 
 
-# TODO: I have to check how to store the data of bezier lines in a dataframe.
 # TODO: The remove_annotations_by_name needs checking because Plotly annotations can be
 # stored as Layout.annotation.Annotation objects, not just dicts. We may get a
 # TypeError on annotation["name"] so we might need to switch to annotation.name
@@ -1288,10 +1287,7 @@ def make_figure(plot_parameters: PlotParameters) -> Figure:
 
     # Before plotting, check if `alignments_position` option is not selected to the
     # `left` to adjust the coordinates of the sequences and genes accordingly.
-    if (
-        plot_parameters.draw_from_button == "plot-button"
-        and plot_parameters.alignments_position != "left"
-    ):
+    if plot_parameters.alignments_position != "left":
         genbank.adjust_positions_sequences_and_alignments_df_for_plotting(
             gb_records=plot_parameters.gb_df,
             cds=plot_parameters.cds_df,
@@ -1349,8 +1345,8 @@ def make_figure(plot_parameters: PlotParameters) -> Figure:
     )
 
     # Plot the homology regions
-    straight_homology_regions = (
-        True if plot_parameters.straight_homology_regions == "straight" else False
+    is_straight = (
+        True if plot_parameters.style_homology_regions == "straight" else False
     )
 
     fig = plot_homology_regions_with_dataframe(
@@ -1359,7 +1355,7 @@ def make_figure(plot_parameters: PlotParameters) -> Figure:
         regions_df=plot_parameters.alignments_regions_df,
         y_separation=plot_parameters.y_separation,
         colorscale=colorscale,
-        straight_heights=straight_homology_regions,
+        straight_heights=is_straight,
         minimum_homology_length=plot_parameters.minimum_homology_length,
         set_colorscale_to_extreme_homologies=set_colorscale_to_extreme_homologies,
         lowest_homology=lowest_identity,
