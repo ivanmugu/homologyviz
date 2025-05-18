@@ -293,12 +293,7 @@ def plot_colorbar_legend(
         go.Scatter(
             y=[None],  # Dummy values
             x=[None],  # Dummy values
-            customdata=[
-                {
-                    "min_identity": min_value,
-                    "max_identity": max_value,
-                }
-            ],
+            customdata=[min_value, max_value],
             name="colorbar legend",
             mode="markers",
             marker=dict(
@@ -312,7 +307,9 @@ def plot_colorbar_legend(
                     ),
                     orientation="h",
                     x=0.75,
-                    y=-0.02,
+                    xanchor="center",
+                    y=-0.15,
+                    yanchor="top",
                     tickfont=dict(size=18),
                     tickvals=tickvals,
                     ticktext=ticktext,
@@ -1114,35 +1111,6 @@ def change_homology_color(
     return figure
 
 
-# def round_up_to_nearest_significant_digit(number: float) -> int:
-#     """
-#     Round up a float to the nearest significant digit.
-
-#     This function rounds a given number up to the next multiple of the most significant
-#     power of ten. It is useful for generating clean scale values or axis limits in plots.
-#     This function is used in HomologyViz to show the scale bar value.
-
-#     Examples
-#     --------
-#     >>> round_up_to_nearest_significant_digit(142)
-#     200
-
-#     Parameters
-#     ----------
-#     number : float
-#         The number to round up.
-
-#     Returns
-#     -------
-#     int
-#         The input number rounded up to the nearest significant digit.
-#     """
-#     # Determine the nearest power of ten (e.g., 1000, 100, 10, etc.)
-#     power_of_ten = 10 ** math.floor(math.log10(number))
-#     # Round up to the next multiple of that power
-#     return math.ceil(number / power_of_ten) * power_of_ten
-
-
 def plot_scale(
     figure: Figure, length_longest_sequence: int, add_scale: bool = True
 ) -> Figure:
@@ -1168,33 +1136,35 @@ def plot_scale(
     figure : plotly.graph_objects.Figure
         The updated figure with the scale line and annotation.
     """
-    # TODO: Dynamically position scale bar annotation based on y_separation to avoid
-    # overlapping with bottom traces.
-
     scale_length: int = misc.round_up_to_nearest_significant_digit(
         length_longest_sequence / 5
     )
     color: str = "rgba(0, 0, 0, 1)" if add_scale else "rgba(0,0,0,0)"
-    # add line representing scale
-    figure.add_trace(
-        go.Scatter(
-            x=[0, scale_length],
-            y=[0, 0],
-            mode="lines",
-            name="Scale trace",
-            line=dict(color=color, width=4),
-            showlegend=False,
-            hoverinfo="skip",
-        )
+    # draw line representing scale
+    figure.add_shape(
+        type="line",
+        x0=0,
+        x1=scale_length,
+        y0=-0.15,
+        y1=-0.15,
+        xref="x",
+        yref="paper",
+        xanchor="center",
+        yanchor="top",
+        line=dict(color=color, width=4),
+        layer="above",
     )
-    # add annotation to scale
+    # draw annotation to scale
     figure.add_annotation(
         x=scale_length / 2,
-        y=-1,
+        y=-0.15,
+        xref="x",
+        yref="paper",
+        xanchor="center",
+        yanchor="top",
         text=f"{scale_length:,.0f} bp",
         name="Scale annotation",
         showarrow=False,
-        yshift=-10,
         font=dict(size=18, color=color),
         hovertext=None,
         hoverlabel=None,
