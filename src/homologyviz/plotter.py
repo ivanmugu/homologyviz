@@ -1152,6 +1152,7 @@ def plot_scale(
         yanchor="top",
         line=dict(color=color, width=4),
         layer="above",
+        name="Scale bar",
     )
     # draw annotation to scale
     figure.add_annotation(
@@ -1175,8 +1176,8 @@ def toggle_scale_bar(figure: Figure, show: bool) -> Figure:
     """
     Toggle the visibility of the scale bar by adjusting its alpha channel.
 
-    This function searches the figure for the scale bar trace and annotation using
-    their names ("Scale trace" and "Scale annotation"). It modifies the color's
+    This function searches the figure for the scale bar shape and annotation using
+    their names ("Scale bar" and "Scale annotation"). It modifies the color's
     alpha value to either show or fully hide them without removing the elements.
 
     Parameters
@@ -1192,12 +1193,14 @@ def toggle_scale_bar(figure: Figure, show: bool) -> Figure:
         The updated figure with the scale bar toggled on or off.
     """
     color: str = "rgba(0, 0, 0, 1)" if show else "rgba(0,0,0,0)"
-    for trace in figure["data"]:
-        if ("name" in trace) and ("Scale trace" in trace["name"]):
-            trace["line"]["color"] = color
-    for annotation in figure.layout["annotations"]:
-        if "Scale annotation" in annotation["name"]:
-            annotation["font"]["color"] = color
+    for shape in figure.layout.shapes or []:
+        if getattr(shape, "name", "") == "Scale bar":
+            if hasattr(shape, "line"):
+                shape.line.color = color
+    for annotation in figure.layout.annotations or []:
+        if getattr(annotation, "name", "") == "Scale annotation":
+            if hasattr(annotation, "font"):
+                annotation.font.color = color
     return figure
 
 
