@@ -786,6 +786,120 @@ def annotate_top_genes(
     return fig
 
 
+def annotate_all_genes_above(
+    fig: Figure,
+    annotate_genes_with: str,
+    number_gb_records: int,
+    cds_records: DataFrame,
+    y_separation: int = 10,
+) -> Figure:
+    """
+    Add vertical text annotations above all genes.
+
+    This function annotates genes using a specified metadata field (e.g., gene name or
+    product). Annotations are positioned above gene arrows and are rotated vertically.
+
+    Parameters
+    ----------
+    fig : plotly.graph_objects.Figure
+        The Plotly figure to which annotations will be added.
+    annotate_genes_with : str
+        The metadata field to use for labeling each gene (e.g., "gene", "product").
+    number_gb_records : int
+        Total number of GenBank records, used to calculate the top y-axis position.
+    cds_records : pandas.DataFrame
+        A DataFrame containing CDS metadata. Must include the following columns:
+        - 'file_number', 'start_plot', 'end_plot',
+        - and the column specified by `annotate_genes_with` ('gene' and 'product').
+    y_separation : int, default=10
+        Vertical spacing between sequence rows; controls annotation height.
+
+    Returns
+    -------
+    fig : plotly.graph_objects.Figure
+        The updated Plotly figure with gene annotations added above the top sequence.
+    """
+    y = y_separation * number_gb_records
+    for record in range(number_gb_records):
+        # Iterate over rows of file_number matching record number
+        df_record = cds_records.loc[cds_records["file_number"] == record]
+        for _, row in df_record.iterrows():
+            x_start = row["start_plot"]
+            x_end = row["end_plot"]
+            x = (x_start + x_end) / 2
+            name = row[annotate_genes_with]
+            fig.add_annotation(
+                x=x,
+                y=y + 1.1,
+                text=name,
+                name=f"Gene annotation: {name}",
+                showarrow=False,
+                textangle=270,
+                font=dict(size=16),
+                xanchor="center",
+                yanchor="bottom",
+            )
+        y -= y_separation
+    return fig
+
+
+def annotate_all_genes_below(
+    fig: Figure,
+    annotate_genes_with: str,
+    number_gb_records: int,
+    cds_records: DataFrame,
+    y_separation: int = 10,
+) -> Figure:
+    """
+    Add vertical text annotations below all genes.
+
+    This function annotates genes using a specified metadata field (e.g., gene name or
+    product). Annotations are positioned below gene arrows and are rotated vertically.
+
+    Parameters
+    ----------
+    fig : plotly.graph_objects.Figure
+        The Plotly figure to which annotations will be added.
+    annotate_genes_with : str
+        The metadata field to use for labeling each gene (e.g., "gene", "product").
+    number_gb_records : int
+        Total number of GenBank records, used to calculate the top y-axis position.
+    cds_records : pandas.DataFrame
+        A DataFrame containing CDS metadata. Must include the following columns:
+        - 'file_number', 'start_plot', 'end_plot',
+        - and the column specified by `annotate_genes_with` ('gene' and 'product').
+    y_separation : int, default=10
+        Vertical spacing between sequence rows; controls annotation height.
+
+    Returns
+    -------
+    fig : plotly.graph_objects.Figure
+        The updated Plotly figure with gene annotations added above the top sequence.
+    """
+    y = y_separation * number_gb_records
+    for record in range(number_gb_records):
+        # Iterate over rows of file_number matching record number
+        df_record = cds_records.loc[cds_records["file_number"] == record]
+        for _, row in df_record.iterrows():
+            x_start = row["start_plot"]
+            x_end = row["end_plot"]
+            x = (x_start + x_end) / 2
+            name = row[annotate_genes_with]
+            fig.add_annotation(
+                x=x,
+                y=y - 1.1,
+                text=name,
+                name=f"Gene annotation: {name}",
+                showarrow=False,
+                textangle=270,
+                font=dict(size=16),
+                xanchor="center",
+                yanchor="top",
+            )
+        y -= y_separation
+    return fig
+
+
 def annotate_bottom_genes(
     fig: Figure,
     annotate_genes_with: str,
@@ -848,7 +962,7 @@ def annotate_bottom_genes(
 
 def annotate_genes(fig: Figure, plot_parameters: PlotParameters) -> Figure:
     """
-    Annotate gene features on the top, bottom, or both sequence rows based on user
+    Annotate gene features on the top, bottom, or all sequence rows based on user
     preferences.
 
     This function uses the `PlotParameters` object to determine how and where gene
@@ -861,7 +975,8 @@ def annotate_genes(fig: Figure, plot_parameters: PlotParameters) -> Figure:
         The Plotly figure to which gene annotations will be added.
     plot_parameters : PlotParameters
         An object containing configuration and metadata, including:
-            - `annotate_genes`: str, one of "top", "bottom", or "top-bottom"
+            - `annotate_genes`: str, one of "top", "bottom", "top-bottom", "all-above", or
+              "all-below"
             - `annotate_genes_with`: str, column name to use for labels (e.g., "gene",
               "product")
             - `cds_df`: DataFrame with CDS metadata
@@ -884,6 +999,22 @@ def annotate_genes(fig: Figure, plot_parameters: PlotParameters) -> Figure:
         )
     if annotate_genes == "bottom" or annotate_genes == "top-bottom":
         fig = annotate_bottom_genes(
+            fig=fig,
+            annotate_genes_with=plot_parameters.annotate_genes_with,
+            number_gb_records=plot_parameters.number_gb_records,
+            cds_records=plot_parameters.cds_df,
+            y_separation=plot_parameters.y_separation,
+        )
+    if annotate_genes == "all-above":
+        fig = annotate_all_genes_above(
+            fig=fig,
+            annotate_genes_with=plot_parameters.annotate_genes_with,
+            number_gb_records=plot_parameters.number_gb_records,
+            cds_records=plot_parameters.cds_df,
+            y_separation=plot_parameters.y_separation,
+        )
+    if annotate_genes == "all-below":
+        fig = annotate_all_genes_below(
             fig=fig,
             annotate_genes_with=plot_parameters.annotate_genes_with,
             number_gb_records=plot_parameters.number_gb_records,
@@ -1064,9 +1195,9 @@ def change_homology_color(
     colorscale_name : str
         Name of the Plotly colorscale to use (e.g., "Greys", "Viridis").
     vmin_truncate : float
-        Lower bound (0–1) of the normalized identity range for color mapping.
+        Lower bound (0-1) of the normalized identity range for color mapping.
     vmax_truncate : float
-        Upper bound (0–1) of the normalized identity range for color mapping.
+        Upper bound (0-1) of the normalized identity range for color mapping.
     set_colorscale_to_extreme_homologies : bool, default=False
         If True, stretch the color scale based on dataset-wide min/max identity values.
     lowest_homology : float or None

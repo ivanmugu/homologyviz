@@ -344,6 +344,8 @@ def make_tab_view() -> dbc.Tab:
                                     "value": "top-bottom",
                                     "label": "Top and bottom genes",
                                 },
+                                {"value": "all-above", "label": "All genes above"},
+                                {"value": "all-below", "label": "All genes below"},
                             ],
                         ),
                         className="d-flex justify-content-evenly mb-1",
