@@ -499,6 +499,7 @@ def plot_genes(
     cds_records : pandas.DataFrame
         A DataFrame containing gene metadata. Expected columns include:
         - 'file_number'
+        - 'cds_number'
         - 'start_plot'
         - 'end_plot'
         - 'color'
@@ -525,6 +526,8 @@ def plot_genes(
             x1 = row["start_plot"]
             x2 = row["end_plot"]
             color = row["color"]
+            file_number = row["file_number"]
+            cds_number = row["cds_number"]
             arrow = Arrow(x1=x1, x2=x2, y=y, head_height=head_height)
             x_values, y_values = arrow.get_coordinates()
             # Get name and check if is None
@@ -536,6 +539,7 @@ def plot_genes(
                 y_values,
                 color=color,
                 name=name,
+                customdata=[file_number, cds_number, name, color],
             )
         y -= y_separation
     return fig

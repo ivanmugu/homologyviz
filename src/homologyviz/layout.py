@@ -408,7 +408,7 @@ def make_accordion_item_edit_color() -> dmc.AccordionItem:
     items.
 
     This UI component includes:
-    - A `ColorInput` widget for selecting a color (RGB format) from predefined swatches
+    - A `ColorInput` widget for selecting a color (HEX format) from predefined swatches
       or custom values.
     - A "Select Items" button to enable item selection mode within the plot.
     - A "Change Color" button to apply the selected color to the currently selected items.
@@ -426,11 +426,11 @@ def make_accordion_item_edit_color() -> dmc.AccordionItem:
       color application.
     - Styling is handled using Bootstrap classes (`d-flex`, `justify-content-evenly`,
       `my-2`, etc.) and inline styles.
-    - Color swatches include commonly used RGB values to improve usability.
+    - Color swatches include commonly used HEX values to improve usability.
 
     Component IDs
     -------------
-    - "color-input": The RGB color selector input.
+    - "color-input": The HEX color selector input.
     - "select-items-button": Triggers selection mode for interactive elements.
     - "select-items-button-store": A hidden Store tracking whether selection mode is
       active.
@@ -447,19 +447,18 @@ def make_accordion_item_edit_color() -> dmc.AccordionItem:
                             [
                                 dmc.ColorInput(
                                     id="color-input",
-                                    # label="Edit Color of Selected Items",
-                                    value="rgb(0, 255, 255)",
+                                    value="#00FFFF",
                                     w=200,
-                                    format="rgb",
+                                    format="hex",
                                     swatches=[
-                                        "rgb(255,0,255)",
-                                        "rgb(0,255,255)",
-                                        "rgb(255,26,0)",
-                                        "rgb(255,116,0)",
-                                        "rgb(255,255,0)",
-                                        "rgb(0,255,0)",
-                                        "rgb(151,59,255)",
-                                        "rgb(0,0,0)",
+                                        "#FF00FF",
+                                        "#00FFFF",
+                                        "#FF1A00",
+                                        "#FF7400",
+                                        "#FFFF00",
+                                        "#00FF00",
+                                        "#973BFF",
+                                        "#000000",
                                     ],
                                     size="md",
                                     style={"padding": "0"},

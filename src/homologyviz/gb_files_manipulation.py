@@ -899,7 +899,7 @@ if __name__ == "__main__":
     )
     gb_df, cds_df = genbank_files_metadata_to_dataframes([gb1])
     # print(cds_df)
-    print(gb_df)
+    print(cds_df)
     # cds_df_groups = cds_df.groupby(["file_number"])
     # print(f"the length of the groups is: {len(cds_df_groups)}")
     # for file_number, group in cds_df_groups:

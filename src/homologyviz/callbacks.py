@@ -30,6 +30,7 @@ import time
 import threading
 from flask import request, jsonify, Response
 import json
+from pandas import DataFrame
 
 import dash
 from dash import Input, Output, State
@@ -346,6 +347,44 @@ def handle_update_homologies_click(
     return fig, None, False
 
 
+def change_color_cell_cds_dataframe(
+    cds_dataframe: DataFrame,
+    file_number: int,
+    cds_number: int,
+    new_color: str,
+) -> None:
+    """
+    Update the color value for a specific coding sequence in the DataFrame.
+
+    This function locates the row in the `cds_dataframe` corresponding to the given
+    `file_number` and `cds_number`, and updates the value in the "color" column to the
+    specified `new_color`. The function modifies the DataFrame in place.
+
+    Parameters
+    ----------
+    cds_dataframe : pandas.DataFrame
+        The DataFrame containig coding sequence data, including columns "file_number",
+        "cds_number", and "color".
+    file_number : int
+        The file identifier used to locate the target row.
+    cds_number : int
+        The CDS idenfifier used to locate the target row.
+    new_color : str
+        The new color value to assign, typically in hexadecimal format.
+
+    Returns
+    -------
+    None
+        The input DataFrame is modified in place.
+    """
+    # change the value of color in DataFrame
+    cds_dataframe.loc[
+        (cds_dataframe["file_number"] == file_number)
+        & (cds_dataframe["cds_number"] == cds_number),
+        "color",
+    ] = new_color
+
+
 def handle_change_color_click(
     figure_state: dict, dash_parameters: PlotParameters, color_input_state: str
 ) -> tuple[Figure, None, bool]:
@@ -375,9 +414,13 @@ def handle_change_color_click(
         A flag (`False`) to indicate that the dmc.Skeleton loading component should be
         hidden
     """
-    curve_numbers = set(dash_parameters.selected_traces)
     # Iterate over selected curve numbers and change color
-    for curve_number in curve_numbers:
+    for curve_number in set(dash_parameters.selected_traces):
+        customdata = figure_state["data"][curve_number]["customdata"]
+        # Change the value of color in the DataFrame
+        change_color_cell_cds_dataframe(
+            dash_parameters.cds_df, customdata[0], customdata[1], color_input_state
+        )
         figure_state["data"][curve_number]["fillcolor"] = color_input_state
         figure_state["data"][curve_number]["line"]["color"] = color_input_state
         figure_state["data"][curve_number]["line"]["width"] = 1
