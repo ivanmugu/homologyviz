@@ -1506,6 +1506,7 @@ def make_figure(plot_parameters: PlotParameters) -> Figure:
         number_gb_records=plot_parameters.number_gb_records,
         longest_sequence=plot_parameters.longest_sequence,
         cds_records=plot_parameters.cds_df,
+        name_from=plot_parameters.annotate_genes_with,
         y_separation=plot_parameters.y_separation,
     )
     # Annotate genes
