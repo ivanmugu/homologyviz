@@ -4,16 +4,16 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "homologyviz"
-version = "0.1.21"
+version = "0.1.22"
 authors = [
     { name = "Ivan Munoz-Gutierrez", email = "ivan.munoz.gutierrez@gmail.com" },
 ]
 maintainers = [
     { name = "Ivan Munoz-Gutierrez", email = "ivan.munoz.gutierrez@gmail.com" },
 ]
-description = "Make graphical representations of BLASTn alignments"
+description = "Create visual representations of BLASTn alignments"
 readme = "README.md"
-license = { text = "BSD 3-Clause License" }
+license = { text = "BSD-3-Clause" }
 keywords = [
     "DNA alignments",
     "BLASTn",
@@ -21,11 +21,14 @@ keywords = [
     "easyfig",
 ]
 classifiers = [
-    "Programming Language :: Python",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3",
     "License :: OSI Approved :: BSD License",
     "Intended Audience :: Science/Research",
     "Operating System :: OS Independent",
     "Topic :: Scientific/Engineering :: Bio-Informatics",
+    "Framework :: Dash",
+    "Environment :: Web Environment",
 ]
 requires-python = ">=3.11"
 dependencies = [
@@ -40,12 +43,14 @@ dependencies = [
     "matplotlib",
     "plotly",
     "pandas",
-    "pytest",
-    "pytest-cov",
 ]
 
+[project.optional-dependencies]
+dev = ["pytest", "pytest-cov"]
+
 [project.urls]
-Repository = "https://github.com/ivanmugu/msplotly.git"
+Repository = "https://github.com/ivanmugu/homologyviz"
+Homepage = "https://github.com/ivanmugu/homologyviz"
 
 [project.scripts]
 hviz = "homologyviz.app:main"
