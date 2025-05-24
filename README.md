@@ -93,7 +93,7 @@ Github: [@ivanmugu](https://github.com/ivanmugu)
 ## 🙏 Acknowledgments
 
 - Built on Dash, Plotly, and Biopython
-- Inspired by easyfig: Sullivan et al (2011) Bioinformatics 27(7):1009-1010
+- Inspired by easyfig: [Sullivan et al (2011) Bioinformatics 27(7):1009-1010](https://academic.oup.com/bioinformatics/article/27/7/1009/230508)
 
 ---
 

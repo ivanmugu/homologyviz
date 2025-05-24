@@ -410,6 +410,7 @@ def make_accordion_item_edit_color() -> dmc.AccordionItem:
     items.
 
     This UI component includes:
+
     - A `ColorInput` widget for selecting a color (HEX format) from predefined swatches
       or custom values.
     - A "Select Items" button to enable item selection mode within the plot.
@@ -529,6 +530,7 @@ def make_accordion_item_homology() -> dmc.AccordionItem:
     Create a Dash Mantine Components AccordionItem for customizing homology region colors.
 
     This UI component allows users to:
+
     - Select a sequential color scale for homology identity shading.
     - Preview the selected colormap in a static Plotly graph.
     - Adjust the effective identity range using a range slider.
