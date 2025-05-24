@@ -16,3 +16,5 @@ documentation for details.
    :caption: Contents:
 
    homologyviz
+   homologyviz.images
+   homologyviz.assets
