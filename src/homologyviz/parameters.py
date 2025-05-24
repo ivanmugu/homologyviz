@@ -6,11 +6,11 @@ needed for plotting in the HomologyViz app. It is used to share state between
 callbacks and to retain user-defined options and metadata derived from GenBank
 and BLASTn results.
 
-License
--------
-This file is part of HomologyViz
-BSD 3-Clause License
-Copyright (c) 2024, Iván Muñoz Gutiérrez
+Notes
+-----
+- This file is part of HomologyViz
+- BSD 3-Clause License
+- Copyright (c) 2024, Iván Muñoz Gutiérrez
 """
 
 from pathlib import Path

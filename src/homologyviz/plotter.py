@@ -12,11 +12,11 @@ For example:
 
 will render the gene in green. If no color is provided, HomologyViz defaults to yellow.
 
-License
--------
-This file is part of HomologyViz
-BSD 3-Clause License
-Copyright (c) 2024, Ivan Muñoz Gutiérrez
+Notes
+-----
+- This file is part of HomologyViz
+- BSD 3-Clause License
+- Copyright (c) 2024, Iván Muñoz Gutiérrez
 """
 
 from pathlib import Path

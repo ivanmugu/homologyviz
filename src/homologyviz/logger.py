@@ -14,11 +14,11 @@ from logger import get_logger
 logger = get_logger(__name__)
 logger.info("This is an informational message.")
 
-License
--------
-This file is part of HomologyViz
-BSD 3-Clause License
-Copyright (c) 2024, Iván Muñoz Gutiérrez
+Notes
+-----
+- This file is part of HomologyViz
+- BSD 3-Clause License
+- Copyright (c) 2024, Iván Muñoz Gutiérrez
 """
 
 import logging

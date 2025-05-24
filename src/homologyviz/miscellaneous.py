@@ -5,11 +5,11 @@ This module provides helper functions for common tasks such as file deletion,
 directory cleanup, and locating package resources. These are used internally by
 multiple components (e.g., BLAST preparation, temporary file handling).
 
-License
--------
-This file is part of HomologyViz
-BSD 3-Clause License
-Copyright (c) 2024, Iván Muñoz Gutiérrez
+Notes
+-----
+- This file is part of HomologyViz
+- BSD 3-Clause License
+- Copyright (c) 2024, Iván Muñoz Gutiérrez
 """
 
 import os

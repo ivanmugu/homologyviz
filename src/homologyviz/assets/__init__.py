@@ -13,9 +13,9 @@ Note
 ----
 This module does not contain Python code. It exists to support the GUI of the app.
 
-License
--------
-This file is part of HomologyViz
-BSD 3-Clause License
-Copyright (c) 2024, Iván Muñoz Gutiérrez
+Notes
+-----
+- This file is part of HomologyViz
+- BSD 3-Clause License
+- Copyright (c) 2024, Iván Muñoz Gutiérrez
 """

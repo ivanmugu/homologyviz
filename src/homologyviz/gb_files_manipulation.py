@@ -15,11 +15,11 @@ This module provides functions to:
 These utilities underpin the data preparation pipeline for visualizing homology and gene
 annotations.
 
-License
--------
-This file is part of HomologyViz
-BSD 3-Clause License
-Copyright (c) 2024, Iván Muñoz Gutiérrez
+Notes
+-----
+- This file is part of HomologyViz
+- BSD 3-Clause License
+- Copyright (c) 2024, Iván Muñoz Gutiérrez
 """
 
 from pathlib import Path

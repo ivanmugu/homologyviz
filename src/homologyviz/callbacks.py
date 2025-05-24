@@ -11,11 +11,11 @@ This module wires together the core interactive components of the app, including
 
 All callbacks are registered through the `register_callbacks(app)` function.
 
-License
--------
-This file is part of HomologyViz
-BSD 3-Clause License
-Copyright (c) 2024, Iván Muñoz Gutiérrez
+Notes
+-----
+- This file is part of HomologyViz
+- BSD 3-Clause License
+- Copyright (c) 2024, Iván Muñoz Gutiérrez
 """
 
 import base64

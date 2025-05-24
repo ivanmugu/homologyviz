@@ -18,11 +18,11 @@ Usage
 This module is not yet integrated into the HomologyViz GUI, but future versions may allow
 users to toggle between straight and curved homology representations.
 
-License
--------
-This file is part of HomologyViz
-BSD 3-Clause License
-Copyright (c) 2024, Iván Muñoz Gutiérrez
+Notes
+-----
+- This file is part of HomologyViz
+- BSD 3-Clause License
+- Copyright (c) 2024, Iván Muñoz Gutiérrez
 """
 
 import bezier

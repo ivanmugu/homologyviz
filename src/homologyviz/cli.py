@@ -5,11 +5,11 @@ This module provides functions to parse command-line arguments and check system
 dependencies (e.g., presence of BLASTn). It supports the GUI launcher and can be
 extended for future command-line features.
 
-License
--------
-This file is part of HomologyViz
-BSD 3-Clause License
-Copyright (c) 2024, Ivan Muñoz Gutierrez
+Notes
+-----
+- This file is part of HomologyViz
+- BSD 3-Clause License
+- Copyright (c) 2024, Iván Muñoz Gutiérrez
 """
 
 import argparse

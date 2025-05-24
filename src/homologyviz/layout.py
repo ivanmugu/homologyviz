@@ -7,11 +7,11 @@ includes interactive controls to upload files, edit plots, adjust views, and exp
 figures. It is structured into multiple tabs—Main, View, Edit, and Save—and integrates
 seamlessly with Dash callbacks.
 
-License
--------
-This file is part of HomologyViz
-BSD 3-Clause License
-Copyright (c) 2024, Iván Muñoz Gutiérrez
+Notes
+-----
+- This file is part of HomologyViz
+- BSD 3-Clause License
+- Copyright (c) 2024, Iván Muñoz Gutiérrez
 """
 
 import dash_ag_grid as dag

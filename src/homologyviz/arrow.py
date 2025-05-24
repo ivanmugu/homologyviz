@@ -1,10 +1,10 @@
 """Class for plotting arrows to represent genes.
 
-License
--------
-This file is part of HomologyViz
-BSD 3-Clause License
-Copyright (c) 2024, Ivan Munoz Gutierrez
+Notes
+-----
+- This file is part of HomologyViz
+- BSD 3-Clause License
+- Copyright (c) 2024, Iván Muñoz Gutiérrez
 """
 
 import matplotlib.pyplot as plt
