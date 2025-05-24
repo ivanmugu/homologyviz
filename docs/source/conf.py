@@ -26,8 +26,12 @@ extensions = [
     "sphinx.ext.viewcode",
     "sphinx.ext.autosummary",  # Optional: for autosummary tables
     "sphinx_autodoc_typehints",  # If installed, for cleaner type hint formatting
+    "myst_parser",
 ]
-
+source_suffix = {
+    ".rst": "restructuredtext",
+    ".md": "markdown",
+}
 autosummary_generate = True
 
 templates_path = ["_templates"]
