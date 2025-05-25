@@ -4,7 +4,7 @@
 
 <div align="center">
 
-![PyPI Version](https://img.shields.io/pypi/v/homologyviz)
+[![PyPI Version](https://img.shields.io/pypi/v/homologyviz)](https://pypi.org/project/homologyviz/)
 ![GitHub License](https://img.shields.io/github/license/ivanmugu/homologyviz)
 ![Python](https://img.shields.io/badge/python-3.11-blue.svg)
 [![Built with Dash + Plotly](https://img.shields.io/badge/Built%20with-Dash%20%2B%20Plotly-1f6feb?logo=plotly&logoColor=white)](https://dash.plotly.com/)
@@ -15,7 +15,7 @@
 
 # 🧬 Create visual representations of BLASTn alignments
 
-**HomologyViz** is a Python-based web app for visualizing pairwise **BLASTn alignments** between DNA sequences with gene annotations and customizable color maps. It allows explore homologous regions and gene structures interactively, with **publication-ready output**.
+**HomologyViz** is a Python-based web app for visualizing pairwise **BLASTn alignments** between DNA sequences with gene annotations and customizable color maps. It allows you to explore homologous regions and gene structures interactively, with **publication-ready output**.
 
 HomologyViz reads **GenBank files (.gb)**, uses the `CDS` features to plot genes as arrows, and performs local BLASTn alignments between sequences. Homology regions are colored by identity percentage using a flexible, user-selectable color scale.
 
@@ -78,6 +78,14 @@ Once installed, launch the app by typing:
 ```bash
 homologyviz
 ```
+
+---
+
+## 📚 Documentation
+
+You can find the full documentation for **HomologyViz** at:
+
+👉 [https://homologyviz.readthedocs.io](https://homologyviz.readthedocs.io/en/latest/)
 
 ---
 
