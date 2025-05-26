@@ -40,7 +40,8 @@ def make_dmc_select(**kwargs) -> Component:
     Parameters
     ----------
     **kwargs : dict
-        Additional properties to customize the Select component (e.g., `data`, `value`, `label`).
+        Additional properties to customize the Select component (e.g., `data`, `value`,
+        `label`).
 
     Returns
     -------
@@ -525,6 +526,85 @@ def make_accordion_item_edit_color() -> dmc.AccordionItem:
     )
 
 
+def make_accordion_item_insert_title() -> dmc.AccordionItem:
+    """
+    Create a Dash Mantine Components AccordionItem for adding a title to the plot.
+
+    This UI component includes:
+
+    - A `ColorInput` widget for selecting a color (HEX format) from predefined swatches
+      or custom values.
+    - A "Select Items" button to enable item selection mode within the plot.
+    - A "Change Color" button to apply the selected color to the currently selected items.
+    - A hidden `dcc.Store` to keep track of the selection mode state (enabled/disabled).
+
+    Returns
+    -------
+    dmc.AccordionItem
+        A fully constructed AccordionItem containing the color editing UI for selected
+        plot items.
+
+    Notes
+    -----
+    - The component assumes that callbacks elsewhere in the app handle selection logic and
+      color application.
+    - Styling is handled using Bootstrap classes (`d-flex`, `justify-content-evenly`,
+      `my-2`, etc.) and inline styles.
+    - Color swatches include commonly used HEX values to improve usability.
+
+    Component IDs
+    -------------
+    - "color-input": The HEX color selector input.
+    - "select-items-button": Triggers selection mode for interactive elements.
+    - "select-items-button-store": A hidden Store tracking whether selection mode is
+      active.
+    - "change-gene-color-button": Applies the selected color to all currently selected
+      items.
+    """
+    return dmc.AccordionItem(
+        [
+            dmc.AccordionControl("Insert Title"),
+            dmc.AccordionPanel(
+                dbc.Row(
+                    [
+                        dbc.Row(
+                            [
+                                dmc.TextInput(
+                                    id="title-input",
+                                    placeholder="Plot Title",
+                                    style={"width": "100%"},
+                                )
+                            ],
+                            className="d-flex justify-content-evenly my-2",
+                        ),
+                        dbc.Row(
+                            [
+                                dmc.Button(
+                                    "Update Title",
+                                    id="update-title-button",
+                                    leftSection=DashIconify(
+                                        icon="radix-icons:update",
+                                        width=25,
+                                    ),
+                                    color="#b303b3",
+                                    size="md",
+                                    style={
+                                        "fontSize": "14px",
+                                        "width": "200px",
+                                    },
+                                ),
+                            ],
+                            className="d-flex justify-content-evenly my-2",
+                        ),
+                    ],
+                    className="d-flex justify-content-center my-1",
+                ),
+            ),
+        ],
+        value="insert-title",
+    )
+
+
 def make_accordion_item_homology() -> dmc.AccordionItem:
     """
     Create a Dash Mantine Components AccordionItem for customizing homology region colors.
@@ -729,6 +809,7 @@ def make_tab_edit() -> dbc.Tab:
         children=[
             dmc.Accordion(
                 children=[
+                    make_accordion_item_insert_title(),
                     make_accordion_item_edit_color(),
                     make_accordion_item_homology(),
                 ],

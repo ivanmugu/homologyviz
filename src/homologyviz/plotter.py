@@ -1339,6 +1339,45 @@ def toggle_scale_bar(figure: Figure, show: bool) -> Figure:
     return figure
 
 
+def add_or_remove_title(
+    fig: Figure,
+    title: str,
+) -> Figure:
+    """
+    Update the Plotly figure by adding or removing its title accordingly.
+
+    If the provided title harbors only whitespace, the figure title is removed. Otherwise,
+    the new title is set and centered.
+
+    Parameters
+    ----------
+    figure : plotly.graph_objects.Figure
+        The Plotly figure to modify.
+    title : str
+        The figure's title. If the str is empty or harbors only whitespace, no title is
+        added, helping to remove the title during Dash callbacks.
+
+    Returns
+    -------
+    fig : plotly.graph_objects.Figure
+        The updated Plotly figure.
+    """
+    # check if title is empty or consists only of whitespace characters
+    if title.strip() == "":
+        fig.update_layout(title=None)
+    # Otherwise update figure title.
+    else:
+        fig.update_layout(
+            title=dict(
+                text=title,
+                x=0.5,
+                xanchor="center",
+                font=dict(size=30),
+            )
+        )
+    return fig
+
+
 def make_alignments(
     input_files: list[Path], output_folder: Path
 ) -> tuple[DataFrame, DataFrame, DataFrame, DataFrame]:
@@ -1538,5 +1577,12 @@ def make_figure(plot_parameters: PlotParameters) -> Figure:
         highest_identity,
         set_colorscale_to_extreme_homologies=set_colorscale_to_extreme_homologies,
     )
+
+    # Add title if user provided one
+    if plot_parameters.plot_title:
+        fig = add_or_remove_title(
+            fig=fig,
+            title=plot_parameters.plot_title,
+        )
 
     return fig

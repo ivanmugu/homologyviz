@@ -134,6 +134,7 @@ def handle_plot_button_click(
     homology_style_state: str,
     minimum_homology_length_state: int,
     scale_bar_state: str,
+    title_input_state: str,
 ) -> tuple[Figure, None, bool]:
     """
     Perform BLASTn alignments and generate a homology plot for Dash.
@@ -172,6 +173,8 @@ def handle_plot_button_click(
         Minimum length of homology region to be displayed.
     scale_bar_state : str
         Whether to include a scale bar in the plot.
+    title_input_state : str
+        String holding the figure's title.
 
     Returns
     -------
@@ -213,6 +216,7 @@ def handle_plot_button_click(
     dash_parameters.add_scale_bar = scale_bar_state
     dash_parameters.selected_traces = []
     dash_parameters.y_separation = 10
+    dash_parameters.plot_title = title_input_state
 
     fig = plt.make_figure(dash_parameters)
     fig.update_layout(clickmode="event+select")
@@ -427,6 +431,49 @@ def handle_change_color_click(
     # Empty "selected_traces" list.
     dash_parameters.selected_traces.clear()
     return figure_state, None, False
+
+
+def handle_update_title_click(
+    figure_state: dict,
+    dash_parameters: PlotParameters,
+    title_input_state: str,
+) -> tuple[Figure, None, bool]:
+    """
+    Handle update title button click and update the Plotly figure accordingly.
+
+    If the provided title is unchanged or only whitespace, the figure title is removed.
+    Otherwise, the new title is set and centered.
+
+    Parameters
+    ----------
+    figure_state : dict
+        Current Plotly figure state, retrieved from dcc.Graph via Dash callback.
+    dash_parameters : PlotParameters
+        Object holding plotting configuration and metadata. This function updates its
+        `plot_title` attribute.
+    title_input_state : str
+        New title input from the user.
+
+    Returns
+    -------
+    fig : plotly.graph_objects.Figure
+        The updated Plotly figure.
+    None
+        Placeholder to reset 'clickData' in Dash callbacks.
+    bool
+        `False` to hide the dmc.Skeleton loading indicator.
+    """
+    # Convert figure_state dictionary into a Figure object
+    fig = Figure(data=figure_state["data"], layout=figure_state["layout"])
+    # If title is the same, do nothing and return
+    if title_input_state == dash_parameters.plot_title:
+        return fig, None, False
+
+    # update dash_parametres.plot_title
+    dash_parameters.plot_title = title_input_state
+    fig = plt.add_or_remove_title(fig, title_input_state)
+
+    return fig, None, False
 
 
 def handle_select_traces_click(
@@ -904,6 +951,7 @@ def register_callbacks(app: dash.Dash) -> dash.Dash:
             Input("change-homology-color-button", "n_clicks"),
             Input("change-gene-color-button", "n_clicks"),
             Input("update-annotations", "n_clicks"),
+            Input("update-title-button", "n_clicks"),
         ],
         [
             State("files-table", "virtualRowData"),
@@ -921,6 +969,7 @@ def register_callbacks(app: dash.Dash) -> dash.Dash:
             State("annotate-genes", "value"),
             State("scale-bar", "value"),
             State("use-genes-info-from", "value"),
+            State("title-input", "value"),
         ],
         prevent_initial_call=True,
     )
@@ -931,6 +980,7 @@ def register_callbacks(app: dash.Dash) -> dash.Dash:
         change_homology_color_button_clicks: int | None,
         change_gene_color_button_clicks: int | None,
         update_annotations_clicks: int | None,
+        update_title_button_clicks: int | None,
         virtual: list[dict[str, str]],
         active_tab: str,
         figure_state: dict,
@@ -946,6 +996,7 @@ def register_callbacks(app: dash.Dash) -> dash.Dash:
         annotate_genes_state: str,
         scale_bar_state: str,
         use_genes_info_from_state: str,
+        title_input_state: str,
     ) -> tuple[Figure | dict, None, bool]:
         """
         Master callback function for generating and modifying the alignment plot.
@@ -973,6 +1024,8 @@ def register_callbacks(app: dash.Dash) -> dash.Dash:
             Click count for the button that updates selected gene trace colors.
         update_annotations_clicks : int | None
             Click count for the button that updates annotations and plot layout.
+        update_title_button_clicks : int | None
+            Click count for the button that updates the figure's title.
         virtual : list[dict[str, str]] | None
             Virtual row data from the GenBank file upload table.
         active_tab : str
@@ -1003,6 +1056,8 @@ def register_callbacks(app: dash.Dash) -> dash.Dash:
             Whether to show the scale bar ("yes" or "no").
         use_genes_info_from_state : str
             Source of gene labels used for annotation (e.g., "CDS product", "CDS gene").
+        title_input_state : str
+            String holding the figure's title.
 
         Returns
         -------
@@ -1042,6 +1097,7 @@ def register_callbacks(app: dash.Dash) -> dash.Dash:
                 homology_style_state,
                 minimum_homology_length_state,
                 scale_bar_state,
+                title_input_state,
             )
 
         # Erase Plot & Reset All Parameters
@@ -1078,6 +1134,14 @@ def register_callbacks(app: dash.Dash) -> dash.Dash:
                 is_set_to_extreme_homologies,
             )
 
+        # Insert title to plot
+        if button_id == "update-title-button":
+            return handle_update_title_click(
+                figure_state,
+                dash_parameters,
+                title_input_state,
+            )
+
         # Change Color of Selected Traces
         if button_id == "change-gene-color-button":
             return handle_change_color_click(
@@ -1107,6 +1171,7 @@ def register_callbacks(app: dash.Dash) -> dash.Dash:
             Output("change-gene-color-button", "disabled"),
             Output("change-homology-color-button", "disabled"),
             Output("select-items-button", "disabled"),
+            Output("update-title-button", "disabled"),
         ],
         Input("plot", "figure"),
     )
@@ -1114,9 +1179,9 @@ def register_callbacks(app: dash.Dash) -> dash.Dash:
         """
         Enable or disable editing buttons based on whether a plot is currently displayed.
 
-        This callback disables the erase, update view, select items, change color, and
-        update homologies buttons when no figure has been generated (i.e., the figure is
-        empty). It re-enables them when valid plot data is available.
+        This callback disables the erase, update view, select items, change color, update
+        homologies, and update title buttons when no figure has been generated (i.e., the
+        figure is empty). It re-enables them when valid plot data is available.
 
         Parameters
         ----------
@@ -1126,13 +1191,13 @@ def register_callbacks(app: dash.Dash) -> dash.Dash:
         Returns
         -------
         list[bool]
-            A list of five boolean values corresponding to the disabled states of:
+            A list of six boolean values corresponding to the disabled states of:
             [erase-button, update-annotations, change-gene-color-button,
-             change-homology-color-button, select-items-button].
+             change-homology-color-button, select-items-button, update-title-button].
         """
         if figure and figure.get("data", []):
-            return [False] * 5
-        return [True] * 5
+            return [False] * 6
+        return [True] * 6
 
     @app.callback(
         Output("plot-button", "disabled"),

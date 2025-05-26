@@ -95,9 +95,11 @@ class PlotParameters:
         Stores the name id of the button that triggered the callback for plotting. This
         parameter is import to distinguish between the `Draw` button and the rest of
         buttons used to update the plot. The id for the `Draw` button is `draw-button`.
-    y_separation float
+    y_separation : float
         Number to plot the sequences in the y-axis. The values to plot in the x-axis are
         stored in the different Pandas DataFrames.
+    plot_title : str
+        Stores the plot's title provided by the user.
     """
 
     def __init__(
@@ -126,6 +128,7 @@ class PlotParameters:
         alignments_regions_df: None | DataFrame = None,
         draw_from_button: None | str = None,
         y_separation: None | float = None,
+        plot_title: str = "",
     ):
         self.input_files = input_files
         self.number_gb_records = number_gb_records
@@ -151,6 +154,7 @@ class PlotParameters:
         self.alignments_regions_df = alignments_regions_df
         self.draw_from_button = draw_from_button
         self.y_separation = y_separation
+        self.plot_title = plot_title
 
     def reset(self):
         """Reset all attributes to their default values."""
