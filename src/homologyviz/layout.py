@@ -480,8 +480,8 @@ def make_accordion_item_edit_color() -> dmc.AccordionItem:
                                     "Select Items",
                                     id="select-items-button",
                                     leftSection=DashIconify(
-                                        icon="material-symbols-light:arrow-selector-tool-outline",
-                                        width=30,
+                                        icon="ix:select-alt",
+                                        width=25,
                                     ),
                                     color="#3a7ebf",
                                     size="md",
@@ -945,6 +945,95 @@ def make_tab_save() -> dbc.Tab:
     return tab_save
 
 
+def make_layout_control_panel() -> html.Div:
+    """
+    Create the left-side control panel layout for the HomologyViz Dash app.
+
+    This panel includes:
+    - The HomologyViz logo at the top.
+    - A vertically scrollable `dbc.Tabs` menu for navigation between key UI sections:
+        - Main (file input, sequence selection)
+        - View (customization of layout and display)
+        - Edit (annotation and color editing)
+        - Save (export options)
+
+    Returns
+    -------
+    html.Div
+        A styled Dash HTML Div component containing the control panel layout.
+    """
+    return html.Div(
+        children=[
+            html.Img(
+                src="/assets/logo.png",
+                className="mx-auto my-4 d-block text-white fw-bold text-center",
+                alt="HomologyViz",
+                style={
+                    "height": "40px",
+                    "fontSize": "24px",
+                },
+            ),
+            html.Div(  # Tabs menu
+                dbc.Tabs(
+                    [
+                        make_tab_main(),
+                        make_tab_view(),
+                        make_tab_edit(),
+                        make_tab_save(),
+                    ],
+                    id="tabs",
+                ),
+                className="mt-1",
+                style={
+                    "height": "85%",
+                    "width": "100%",
+                    "overflow": "auto",
+                },
+            ),
+        ],
+        style={
+            "backgroundColor": "#242424",
+            "height": "95vh",
+            "overflow": "auto",
+        },
+    )
+
+
+def make_layout_plot_panel() -> html.Div:
+    """
+    Create the right-side plot panel layout for the HomologyViz Dash app.
+
+    This panel includes:
+    - A `dcc.Graph` component where the main BLASTn alignment figure is rendered.
+    - A `dmc.Skeleton` component used as a loading placeholder while the figure is
+      updating.
+
+    The layout is styled to occupy nearly full vertical height and has a visible border.
+
+    Returns
+    -------
+    html.Div
+        A styled Dash HTML Div containing the main plot area and loading skeleton.
+    """
+    return html.Div(
+        children=[
+            dmc.Skeleton(
+                id="plot-skeleton",
+                visible=False,
+                children=dcc.Graph(
+                    id="plot",
+                    style={"height": "100%"},
+                ),
+                height="100%",
+            ),
+        ],
+        style={
+            "border": "1px solid black",
+            "height": "96vh",
+        },
+    )
+
+
 def create_layout(app: Dash) -> Dash:
     """
     Construct the full layout for the HomologyViz Dash app.
@@ -972,64 +1061,14 @@ def create_layout(app: Dash) -> Dash:
     app.layout = dmc.MantineProvider(
         dmc.Grid(
             children=[
-                dcc.Location(id="url", refresh=True),  # Allows refreshing app
+                dcc.Location(id="url", refresh=True),
                 dmc.GridCol(
-                    html.Div(  # ==== PLOT CONTROL ===================================== #
-                        children=[
-                            html.Img(
-                                src="/assets/logo.png",
-                                className="mx-auto my-4 d-block text-white fw-bold text-center",
-                                alt="HomologyViz",
-                                style={
-                                    "height": "40px",
-                                    "fontSize": "24px",
-                                },
-                            ),
-                            html.Div(  # Tabs menu
-                                dbc.Tabs(
-                                    [
-                                        make_tab_main(),
-                                        make_tab_view(),
-                                        make_tab_edit(),
-                                        make_tab_save(),
-                                    ],
-                                    id="tabs",
-                                ),
-                                className="mt-1",
-                                style={
-                                    "height": "85%",
-                                    "width": "100%",
-                                    "overflow": "auto",
-                                },
-                            ),
-                        ],
-                        style={
-                            "backgroundColor": "#242424",
-                            "height": "95vh",
-                            "overflow": "auto",
-                        },
-                    ),
+                    make_layout_control_panel(),
                     span="auto",
                     style={"maxWidth": "340px", "minWidth": "200px"},
                 ),
                 dmc.GridCol(
-                    html.Div(  # ==== GRAPH ============================================ #
-                        children=[
-                            dmc.Skeleton(
-                                id="plot-skeleton",
-                                visible=False,
-                                children=dcc.Graph(
-                                    id="plot",
-                                    style={"height": "100%"},
-                                ),
-                                height="100%",
-                            ),
-                        ],
-                        style={
-                            "border": "1px solid black",
-                            "height": "96vh",
-                        },
-                    ),
+                    make_layout_plot_panel(),
                     span=9,
                 ),
             ],
