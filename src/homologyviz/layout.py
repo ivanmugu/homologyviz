@@ -351,7 +351,7 @@ def make_tab_view() -> dbc.Tab:
                         ),
                         className="d-flex justify-content-evenly mb-1",
                     ),
-                    dbc.Row(
+                    dbc.Row(  # TODO: remove this sections. Not needed.
                         make_dmc_select(
                             id="annotate-sequences",
                             label="Annotate Sequences",
@@ -405,6 +405,365 @@ def make_tab_view() -> dbc.Tab:
     return tab_view
 
 
+def make_update_button_insert_title() -> dmc.Button:
+    return dmc.Button(
+        "Update Title",
+        id="update-title-button",
+        leftSection=DashIconify(
+            icon="radix-icons:update",
+            width=25,
+        ),
+        color="#b303b3",
+        size="md",
+        style={
+            "fontSize": "14px",
+            "width": "200px",
+        },
+    )
+
+
+def make_accordion_item_insert_title() -> dmc.AccordionItem:
+    """
+    Create a Dash Mantine Components AccordionItem for adding a title to the plot.
+
+    This UI component includes:
+
+    - A `ColorInput` widget for selecting a color (HEX format) from predefined swatches
+      or custom values.
+    - A "Select Items" button to enable item selection mode within the plot.
+    - A "Change Color" button to apply the selected color to the currently selected items.
+    - A hidden `dcc.Store` to keep track of the selection mode state (enabled/disabled).
+
+    Returns
+    -------
+    dmc.AccordionItem
+        A fully constructed AccordionItem containing the color editing UI for selected
+        plot items.
+
+    Notes
+    -----
+    - The component assumes that callbacks elsewhere in the app handle selection logic and
+      color application.
+    - Styling is handled using Bootstrap classes (`d-flex`, `justify-content-evenly`,
+      `my-2`, etc.) and inline styles.
+    - Color swatches include commonly used HEX values to improve usability.
+
+    Component IDs
+    -------------
+    - "color-input": The HEX color selector input.
+    - "select-items-button": Triggers selection mode for interactive elements.
+    - "select-items-button-store": A hidden Store tracking whether selection mode is
+      active.
+    - "change-gene-color-button": Applies the selected color to all currently selected
+      items.
+    """
+    return dmc.AccordionItem(
+        [
+            dmc.AccordionControl("Title"),
+            dmc.AccordionPanel(
+                dbc.Row(
+                    [
+                        dbc.Row(
+                            [
+                                dmc.TextInput(
+                                    id="title-input",
+                                    placeholder="Plot Title",
+                                    style={"width": "100%"},
+                                )
+                            ],
+                            className="d-flex justify-content-evenly my-2",
+                        ),
+                        dbc.Row(
+                            [
+                                make_update_button_insert_title(),
+                            ],
+                            className="d-flex justify-content-evenly my-2",
+                        ),
+                    ],
+                    className="d-flex justify-content-center my-1",
+                ),
+            ),
+        ],
+        value="insert-title",
+    )
+
+
+def make_offcanvas_sequence_table() -> dag.AgGrid:
+    """
+    Make the offcanvas sequence table
+
+    Returns
+    -------
+    dag.AgGrid
+    """
+    return dag.AgGrid(
+        id="sequence-table",
+        columnDefs=[
+            {
+                "headerName": "File",
+                "field": "file_number",
+                "width": 60,
+                "maxWidth": 80,
+                "minWidth": 40,
+                "suppressSizeToFit": True,
+                "rowDrag": False,
+                "sortable": False,
+                "editable": False,
+                "checkboxSelection": False,
+                "headerCheckboxSelection": False,
+                "cellStyle": {"fontSize": "12px"},
+            },
+            {
+                "headerName": "Accession",
+                "field": "accession",
+                "width": 120,
+                "maxWidth": 140,
+                "minWidth": 100,
+                "suppressSizeToFit": True,
+                "rowDrag": False,
+                "sortable": False,
+                "editable": False,
+                "checkboxSelection": False,
+                "headerCheckboxSelection": False,
+                "cellStyle": {"fontSize": "12px"},
+            },
+            {
+                "headerName": "Record name",
+                "field": "record_name",
+                "rowDrag": False,
+                "sortable": False,
+                "editable": False,
+                "checkboxSelection": False,
+                "headerCheckboxSelection": False,
+                "cellStyle": {"fontSize": "12px"},
+            },
+            {
+                "headerName": "File name",
+                "field": "file_name",
+                "rowDrag": False,
+                "sortable": False,
+                "editable": False,
+                "checkboxSelection": False,
+                "headerCheckboxSelection": False,
+                "cellStyle": {"fontSize": "12px"},
+            },
+            {
+                "headerName": "Custom name",
+                "field": "custom_name",
+                "headerTooltip": "Type a custom name for annotation",
+                "rowDrag": False,
+                "sortable": False,
+                "editable": True,
+                "checkboxSelection": False,
+                "headerCheckboxSelection": False,
+                "cellStyle": {
+                    "fontSize": "12px",
+                    "fontStyle": "italic",
+                },
+            },
+        ],
+        dashGridOptions={
+            "tooltipShowDelay": 100,
+        },
+        defaultColDef={"resizable": True},
+        columnSize="sizeToFit",
+        style={
+            "height": "400px",
+            "width": "100%",
+            "fontSize": "12px",
+        },
+        className="ag-theme-alpine-dark",
+    )
+
+
+def make_offcanvas_segment_control() -> html.Div:
+    """Make offcanvas segment control"""
+    return html.Div(
+        children=[
+            dbc.Label(
+                "Annotate Sequences From:",
+                style={
+                    "fontSize": "16px",
+                },
+            ),
+            dmc.SegmentedControl(
+                id="annotation-column-choice",
+                data=[
+                    {"label": "No", "value": "no"},
+                    {"label": "Accession", "value": "accession"},
+                    {"label": "Record Name", "value": "record_name"},
+                    {"label": "File Name", "value": "file_name"},
+                    {"label": "Custom Name", "value": "custom_name"},
+                ],
+                value="no",
+                color="#3a7ebf",
+                radius="xl",
+                size="md",
+                withItemsBorders=True,
+                styles={"fontSize": "16px"},
+                fullWidth=False,
+                transitionDuration=500,
+            ),
+        ]
+    )
+
+
+def make_offcanvas_update_sequence_text() -> dmc.Text:
+    return dmc.Text(
+        "You can type a custom name in the ✎ Custom name column for annotation"
+    )
+
+
+def make_offcanvas_update_sequences_button() -> dmc.Button:
+    return dmc.Button(
+        "Update",
+        id="offcanvas-update-sequence-annotations-button",
+        leftSection=DashIconify(
+            icon="radix-icons:update",
+            width=25,
+        ),
+        color="#b303b3",
+        size="md",
+        style={
+            "fontSize": "14px",
+            "width": "150px",
+        },
+    )
+
+
+def make_offcanvas_paper() -> dmc.Paper:
+    """Make offcanvas paper"""
+    return dmc.Paper(
+        children=[
+            dbc.Row(
+                make_offcanvas_segment_control(),
+                # className="mt-1",
+            ),
+            dbc.Row(
+                [
+                    dbc.Col(
+                        make_offcanvas_update_sequence_text(),
+                    ),
+                    dbc.Col(
+                        make_offcanvas_update_sequences_button(),
+                    ),
+                ],
+                justify="center",
+                align="center",
+                className="mt-1",
+            ),
+        ],
+        shadow="md",
+        radius="md",
+        p="md",
+        withBorder=True,
+    )
+
+
+def make_offcanvas_edit_sequence_annotations() -> dbc.Offcanvas:
+    return dbc.Offcanvas(
+        style={"width": "80%", "fontSize": "12px"},
+        id="offcanvas-edit-sequence-annotations",
+        title="Edit Sequence Annotations",
+        is_open=False,
+        backdrop="static",
+        children=[
+            dbc.Row(
+                [
+                    dbc.Col(
+                        make_offcanvas_paper(),
+                        width=10,
+                    ),
+                ],
+                className="mb-3",
+                justify="center",
+                align="center",
+            ),
+            dbc.Row(
+                [
+                    dbc.Col(
+                        make_offcanvas_sequence_table(),
+                        width=10,
+                    ),
+                ],
+                justify="center",
+            ),
+        ],
+    )
+
+
+def make_accordion_item_edit_sequence_annotations() -> dmc.AccordionItem:
+    """
+    Create the Dash Mantine Components AccordionItem for editing the annotations of
+    sequences.
+    """
+    return dmc.AccordionItem(
+        [
+            dmc.AccordionControl("Annotations"),
+            dmc.AccordionPanel(
+                [
+                    dmc.ButtonGroup(
+                        [
+                            dmc.Button(
+                                "Sequences",
+                                id="open-offcanvas-edit-sequence-annotations",
+                                variant="light",
+                                color="gray",
+                                size="md",
+                                fullWidth=True,
+                                justify="space-between",
+                                rightSection=DashIconify(
+                                    icon="lucide:chevron-right", width=16
+                                ),
+                                style={
+                                    "fontSize": "14px",
+                                },
+                            ),
+                            dmc.Button(
+                                "Genes",
+                                id="open-offcanvas-edit-gene-annotations",
+                                variant="light",
+                                color="gray",
+                                size="md",
+                                fullWidth=True,
+                                justify="space-between",
+                                rightSection=DashIconify(
+                                    icon="lucide:chevron-right", width=16
+                                ),
+                                style={
+                                    "fontSize": "14px",
+                                },
+                            ),
+                        ],
+                        style={
+                            "width": "200px",
+                            "padding": "0px",
+                            "borderWidth": "1px",
+                            "borderStyle": "solid",
+                            "borderColor": "#424242",
+                            "borderRadius": "5px",
+                        },
+                        orientation="vertical",
+                    ),
+                    make_offcanvas_edit_sequence_annotations(),
+                    dbc.Offcanvas(
+                        html.P(
+                            "This is the content of the Offcanvas Gene Annota. "
+                            "Close it by clicking on the close button, or "
+                            "the backdrop."
+                        ),
+                        id="offcanvas-edit-gene-annotations",
+                        title="Title",
+                        is_open=False,
+                    ),
+                ],
+                className="d-flex justify-content-evenly mb-2",
+            ),
+        ],
+        value="edit-annotations",
+    )
+
+
 def make_accordion_item_edit_color() -> dmc.AccordionItem:
     """
     Create a Dash Mantine Components AccordionItem for editing the color of selected
@@ -443,7 +802,7 @@ def make_accordion_item_edit_color() -> dmc.AccordionItem:
     """
     return dmc.AccordionItem(
         [
-            dmc.AccordionControl("Edit Color of Selected Items"),
+            dmc.AccordionControl("Color of Selected Items"),
             dmc.AccordionPanel(
                 dbc.Row(
                     [
@@ -487,7 +846,7 @@ def make_accordion_item_edit_color() -> dmc.AccordionItem:
                                     size="md",
                                     variant="outline",
                                     style={
-                                        "fontSize": "12px",
+                                        "fontSize": "14px",
                                         "width": "200px",
                                     },
                                 ),
@@ -510,7 +869,7 @@ def make_accordion_item_edit_color() -> dmc.AccordionItem:
                                     color="#b303b3",
                                     size="md",
                                     style={
-                                        "fontSize": "12px",
+                                        "fontSize": "14px",
                                         "width": "200px",
                                     },
                                 ),
@@ -523,85 +882,6 @@ def make_accordion_item_edit_color() -> dmc.AccordionItem:
             ),
         ],
         value="edit-color",
-    )
-
-
-def make_accordion_item_insert_title() -> dmc.AccordionItem:
-    """
-    Create a Dash Mantine Components AccordionItem for adding a title to the plot.
-
-    This UI component includes:
-
-    - A `ColorInput` widget for selecting a color (HEX format) from predefined swatches
-      or custom values.
-    - A "Select Items" button to enable item selection mode within the plot.
-    - A "Change Color" button to apply the selected color to the currently selected items.
-    - A hidden `dcc.Store` to keep track of the selection mode state (enabled/disabled).
-
-    Returns
-    -------
-    dmc.AccordionItem
-        A fully constructed AccordionItem containing the color editing UI for selected
-        plot items.
-
-    Notes
-    -----
-    - The component assumes that callbacks elsewhere in the app handle selection logic and
-      color application.
-    - Styling is handled using Bootstrap classes (`d-flex`, `justify-content-evenly`,
-      `my-2`, etc.) and inline styles.
-    - Color swatches include commonly used HEX values to improve usability.
-
-    Component IDs
-    -------------
-    - "color-input": The HEX color selector input.
-    - "select-items-button": Triggers selection mode for interactive elements.
-    - "select-items-button-store": A hidden Store tracking whether selection mode is
-      active.
-    - "change-gene-color-button": Applies the selected color to all currently selected
-      items.
-    """
-    return dmc.AccordionItem(
-        [
-            dmc.AccordionControl("Insert Title"),
-            dmc.AccordionPanel(
-                dbc.Row(
-                    [
-                        dbc.Row(
-                            [
-                                dmc.TextInput(
-                                    id="title-input",
-                                    placeholder="Plot Title",
-                                    style={"width": "100%"},
-                                )
-                            ],
-                            className="d-flex justify-content-evenly my-2",
-                        ),
-                        dbc.Row(
-                            [
-                                dmc.Button(
-                                    "Update Title",
-                                    id="update-title-button",
-                                    leftSection=DashIconify(
-                                        icon="radix-icons:update",
-                                        width=25,
-                                    ),
-                                    color="#b303b3",
-                                    size="md",
-                                    style={
-                                        "fontSize": "14px",
-                                        "width": "200px",
-                                    },
-                                ),
-                            ],
-                            className="d-flex justify-content-evenly my-2",
-                        ),
-                    ],
-                    className="d-flex justify-content-center my-1",
-                ),
-            ),
-        ],
-        value="insert-title",
     )
 
 
@@ -646,7 +926,7 @@ def make_accordion_item_homology() -> dmc.AccordionItem:
     """
     return dmc.AccordionItem(
         [
-            dmc.AccordionControl("Change Homology Colormap"),
+            dmc.AccordionControl("Homology Colormap"),
             dmc.AccordionPanel(
                 dbc.Row(
                     [
@@ -810,10 +1090,13 @@ def make_tab_edit() -> dbc.Tab:
             dmc.Accordion(
                 children=[
                     make_accordion_item_insert_title(),
+                    make_accordion_item_edit_sequence_annotations(),
                     make_accordion_item_edit_color(),
                     make_accordion_item_homology(),
                 ],
-                variant="separated",
+                # variant="separated",
+                variant="default",
+                chevronPosition="left",
                 className="mt-3",
             ),
         ],

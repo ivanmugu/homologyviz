@@ -710,10 +710,17 @@ def annotate_dna_sequences(
         The updated Plotly figure with sequence annotations added.
     """
     y = y_separation * number_gb_records
-    options = {"accession": "accession", "name": "record_name", "fname": "file_name"}
+    options = {
+        "accession": "accession",
+        "record_name": "record_name",
+        "file_name": "file_name",
+        "custom_name": "custom_name",
+    }
     option = options.get(annotate_with, "accession")
     for _, row in gb_records.iterrows():
         name = row[option]
+        print(f"option: {option}")
+        print(f"add this name: {name}")
         fig.add_annotation(
             x=longest_sequence + padding,
             xref="x",

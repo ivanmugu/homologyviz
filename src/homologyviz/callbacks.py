@@ -570,6 +570,35 @@ def update_homology_regions(
     align_plot_state: str,
     homology_style_state: str,
 ) -> Figure:
+    """
+    Update the homology region style and alignment position in the plot if user
+    preferences change.
+
+    This function checks whether the user has requested a change to the style of homology
+    region shading (e.g., Bezier vs. straight) or to the alignment position of the
+    homology region plot (e.g., left, center, or right). If either preference has changed,
+    the figure is redrawn using the updated parameters. Otherwise, the figure is
+    reconstructed from the current figure state.
+
+    Parameters
+    ----------
+    figure_state : dict
+        A dictionary containing the current Plotly figure's 'data' and 'layout'.
+    dash_parameters : PlotParameters
+        An object storing the current state of plotting parameters, including alignment
+        position and homology style.
+    align_plot_state : str
+        The desired position of the homology alignment plot in the figure ('left',
+        'center', or 'right')
+    homology_style_state : str
+        The desired visual style of homology regions ('Bezier' or 'straight').
+
+    Returns
+    -------
+    plotly.graph_objects.Figure
+        The updated Plotly figure with the appropriate homology style and alignment
+        position.
+    """
     print(f"homology style state: {homology_style_state}")
     # Check if user wants to change the plot location and homology style
     if (
@@ -683,6 +712,83 @@ def update_dna_sequences_annotations(
                 annotate_with=dash_parameters.annotate_sequences,
                 y_separation=dash_parameters.y_separation,
             )
+    return fig
+
+
+def update_gb_dataframe_custom_name(table: list[dict], gb_df: DataFrame):
+    """
+    Update the 'custom_name' column of a DataFrame using values from a table of
+    dictionaries.
+
+    Parameters
+    ----------
+    table : list of dict
+        A list where each dictionary contain a 'custom_name' key.
+    gb_df : pandas.DataFrame
+        The DataFrame whose 'custom_name' column will be updated.
+
+    Returns
+    -------
+    pandas.DataFrame
+        The updated DataFrame with the 'custom_name' column set from `table`.
+    """
+    custom_names = [row["custom_name"] for row in table]
+    gb_df["custom_name"] = custom_names
+    return gb_df
+
+
+def update_dna_sequence_annotations(
+    fig: Figure,
+    dash_parameters: PlotParameters,
+    annotation_column_choice_state: str,
+    table: list[dict],
+):
+    """
+    Update DNA sequence annotations in the Plotly figure based on user-selected
+    annotations options.
+
+    This function is triggered when the user edits the `Annotations/Sequences` dropdown in
+    the `Edit` tab of the app. It removes existing DNA sequence annotations and re-adds
+    them based on the current user selection. It also updates the 'custom_name' column in
+    the GenBank DataFrame.
+
+    Parameters
+    ----------
+    fig : plotly.graph_objects.Figure
+        The Plotly figure containing the DNA sequence tracks and annotations.
+    dash_parameters : PlotParameters
+        An object containing state variables for plotting, such as GenBank data and
+        annotation preferences.
+    annotation_column_choice_state : str
+        The column name selected by the user to annotate sequences with. Use "no" to
+        disable annotations.
+    table : list of dict
+        A list of dictionaries representing the rows in the editable sequence table.
+        Each dictionary must include a "custom_name" field.
+
+    Returns
+    -------
+    plotly.graph_objects.Figure
+        The updated figure with DNA sequence annotations added or removed based on user
+        input.
+    """
+    # if annotation_column_choice_state != dash_parameters.annotate_sequences:
+    # Update dash_parameters
+    dash_parameters.annotate_sequences = annotation_column_choice_state
+    # Update custom name field of GenBank DataFrame
+    update_gb_dataframe_custom_name(table, dash_parameters.gb_df)
+    # Remove any DNA sequence annotations
+    fig = plt.remove_annotations_by_name(fig, "Sequence annotation:")
+    # If user selected a different value than "no" add annotations.
+    if annotation_column_choice_state != "no":
+        fig = plt.annotate_dna_sequences(
+            fig=fig,
+            gb_records=dash_parameters.gb_df,
+            longest_sequence=dash_parameters.longest_sequence,
+            number_gb_records=dash_parameters.number_gb_records,
+            annotate_with=dash_parameters.annotate_sequences,
+            y_separation=dash_parameters.y_separation,
+        )
     return fig
 
 
@@ -806,8 +912,7 @@ def handle_update_view_click(
         A flag (`False`) to indicate that the dmc.Skeleton loading component should be
         hidden.
     """
-    # Align plot to the left, center, or right
-    # fig = align_plot(figure_state, dash_parameters, align_plot_state)
+    # Update homology connector style and/or positio of the alignment in the figure
     fig = update_homology_regions(
         figure_state,
         dash_parameters,
@@ -823,10 +928,10 @@ def handle_update_view_click(
         annotate_genes_state,
     )
 
-    # Update DNA sequences annotations
-    fig = update_dna_sequences_annotations(
-        fig, dash_parameters, annotate_sequences_state
-    )
+    # # Update DNA sequences annotations
+    # fig = update_dna_sequences_annotations(
+    #     fig, dash_parameters, annotate_sequences_state
+    # )
 
     # Toggle scale bar
     fig = update_scale_bar(fig, dash_parameters, scale_bar_state)
@@ -874,7 +979,7 @@ def register_callbacks(app: dash.Dash) -> dash.Dash:
     # Class to store alignments data
     dash_parameters = PlotParameters()
 
-    # ==== files-table for selected GenBank files ====================================== #
+    # = Files-table for selected GenBank files ========================================= #
     @app.callback(
         Output("files-table", "rowData"),
         [
@@ -882,7 +987,10 @@ def register_callbacks(app: dash.Dash) -> dash.Dash:
             Input("upload", "contents"),
             Input("trash-selected-files-button", "n_clicks"),
         ],
-        [State("files-table", "rowData"), State("files-table", "selectedRows")],
+        [
+            State("files-table", "rowData"),
+            State("files-table", "selectedRows"),
+        ],
     )
     def update_file_table(
         filenames: list | None,
@@ -901,7 +1009,7 @@ def register_callbacks(app: dash.Dash) -> dash.Dash:
         Parameters
         ----------
         filenames : list[str] or None
-            List of filenames uploaded via the uplaod componenet.
+            List of filenames uploaded via the upload component.
         contents : list[str] or None
             Corresponding list of base64-encoded file contents.
         n_clicks : int or None
@@ -937,7 +1045,7 @@ def register_callbacks(app: dash.Dash) -> dash.Dash:
 
         return current_row_data if current_row_data else []
 
-    # MAIN CALLBACK FUNCTION: Plot the Alignments
+    # = MAIN CALLBACK FUNCTION ========================================================= #
     @app.callback(
         [
             Output("plot", "figure"),
@@ -952,6 +1060,7 @@ def register_callbacks(app: dash.Dash) -> dash.Dash:
             Input("change-gene-color-button", "n_clicks"),
             Input("update-annotations", "n_clicks"),
             Input("update-title-button", "n_clicks"),
+            Input("offcanvas-update-sequence-annotations-button", "n_clicks"),
         ],
         [
             State("files-table", "virtualRowData"),
@@ -970,6 +1079,8 @@ def register_callbacks(app: dash.Dash) -> dash.Dash:
             State("scale-bar", "value"),
             State("use-genes-info-from", "value"),
             State("title-input", "value"),
+            State("sequence-table", "virtualRowData"),
+            State("annotation-column-choice", "value"),
         ],
         prevent_initial_call=True,
     )
@@ -981,6 +1092,7 @@ def register_callbacks(app: dash.Dash) -> dash.Dash:
         change_gene_color_button_clicks: int | None,
         update_annotations_clicks: int | None,
         update_title_button_clicks: int | None,
+        update_sequence_annotations: int | None,
         virtual: list[dict[str, str]],
         active_tab: str,
         figure_state: dict,
@@ -997,6 +1109,8 @@ def register_callbacks(app: dash.Dash) -> dash.Dash:
         scale_bar_state: str,
         use_genes_info_from_state: str,
         title_input_state: str,
+        sequence_table_state: list[dict] | None,
+        annotation_column_choice_state: str,
     ) -> tuple[Figure | dict, None, bool]:
         """
         Master callback function for generating and modifying the alignment plot.
@@ -1074,13 +1188,13 @@ def register_callbacks(app: dash.Dash) -> dash.Dash:
         - Uses `dash.callback_context` to determine which button triggered the callback.
         - This function is central to all updates affecting the alignment plot.
         """
+        # TODO: fix annotate_squences_state with annotation_column_choice_state
         # Use context to find the button that triggered the callback.
         ctx = dash.callback_context
         button_id = ctx.triggered[0]["prop_id"].split(".")[0]
         print(f"button_id: {button_id}")
 
-        # ============================================================================== #
-        # TAB MAIN
+        # = TAB MAIN =================================================================== #
         # Perform Alignments & Plot
         if (button_id == "plot-button") and virtual:
             return handle_plot_button_click(
@@ -1106,8 +1220,7 @@ def register_callbacks(app: dash.Dash) -> dash.Dash:
             # Return an empty figure, None for clickdata, and False for skeleton
             return {}, None, False
 
-        # ============================================================================== #
-        # TAB VIEW
+        # = TAB VIEW =================================================================== #
         # Update Annotations and View
         if button_id == "update-annotations":
             return handle_update_view_click(
@@ -1122,8 +1235,7 @@ def register_callbacks(app: dash.Dash) -> dash.Dash:
                 minimum_homology_length_state,
             )
 
-        # ============================================================================== #
-        # TAB EDIT
+        # = TAB EDIT =================================================================== #
         # Change Homology Color Regions and Colorscale Bar Legend
         if button_id == "change-homology-color-button":
             return handle_update_homologies_click(
@@ -1141,6 +1253,17 @@ def register_callbacks(app: dash.Dash) -> dash.Dash:
                 dash_parameters,
                 title_input_state,
             )
+
+        # Update sequence annotations
+        if button_id == "offcanvas-update-sequence-annotations-button":
+            fig = Figure(data=figure_state["data"], layout=figure_state["layout"])
+            fig = update_dna_sequence_annotations(
+                fig,
+                dash_parameters,
+                annotation_column_choice_state,
+                sequence_table_state,
+            )
+            return fig, None, False
 
         # Change Color of Selected Traces
         if button_id == "change-gene-color-button":
@@ -1164,6 +1287,7 @@ def register_callbacks(app: dash.Dash) -> dash.Dash:
 
         return figure_state, None, False
 
+    # = Activate all update buttons only when there is a plot ========================== #
     @app.callback(
         [
             Output("erase-button", "disabled"),
@@ -1172,6 +1296,7 @@ def register_callbacks(app: dash.Dash) -> dash.Dash:
             Output("change-homology-color-button", "disabled"),
             Output("select-items-button", "disabled"),
             Output("update-title-button", "disabled"),
+            Output("offcanvas-update-sequence-annotations-button", "disabled"),
         ],
         Input("plot", "figure"),
     )
@@ -1193,12 +1318,16 @@ def register_callbacks(app: dash.Dash) -> dash.Dash:
         list[bool]
             A list of six boolean values corresponding to the disabled states of:
             [erase-button, update-annotations, change-gene-color-button,
-             change-homology-color-button, select-items-button, update-title-button].
+             change-homology-color-button, select-items-button, update-title-button,
+             offcanvas-update-sequence-annotations-button].
         """
         if figure and figure.get("data", []):
-            return [False] * 6
-        return [True] * 6
+            return [False] * 7
+        return [True] * 7
 
+    # = Activate the plot button only if there are files in the input table ============ #
+    # TODO: make sure the button is actevited only if there are two or more files in the
+    # table. Also, deactivate the button if the user erases all files.
     @app.callback(
         Output("plot-button", "disabled"),
         Input("files-table", "rowData"),
@@ -1223,6 +1352,7 @@ def register_callbacks(app: dash.Dash) -> dash.Dash:
         """
         return False if row_data else True
 
+    # = Activate the select items button when the user clicks on it ==================== #
     @app.callback(
         [
             Output("select-items-button", "variant"),
@@ -1267,6 +1397,7 @@ def register_callbacks(app: dash.Dash) -> dash.Dash:
             button_style = "outline"
         return button_style, is_active
 
+    # = Toggle the colorscale buttons depending on users preference ==================== #
     @app.callback(
         [
             Output("extreme-homologies-button", "variant"),
@@ -1342,6 +1473,7 @@ def register_callbacks(app: dash.Dash) -> dash.Dash:
 
         return option1
 
+    # = Update the color scale gradient after a user selection ========================= #
     @app.callback(
         Output("color-scale-display", "figure"),
         Input("color-scale", "value"),
@@ -1367,6 +1499,58 @@ def register_callbacks(app: dash.Dash) -> dash.Dash:
         """
         return plt.create_color_line(value.capitalize())
 
+    # = Update edit sequence annotations table ========================================= #
+    @app.callback(
+        Output("sequence-table", "rowData"),
+        Input("open-offcanvas-edit-sequence-annotations", "n_clicks"),
+        State("sequence-table", "rowData"),
+        prevent_initial_call=True,
+    )
+    def update_edit_sequence_annotations_table(figure: dict, table) -> list[dict]:
+        if dash_parameters.gb_df is None:
+            return []
+        if figure:
+            rows = []
+            for _, gb_file in dash_parameters.gb_df.iterrows():
+                rows.append(
+                    {
+                        "file_number": (gb_file["file_number"] + 1),
+                        "accession": gb_file["accession"],
+                        "record_name": gb_file["record_name"],
+                        "file_name": gb_file["file_name"],
+                        "custom_name": gb_file["custom_name"],
+                    }
+                )
+            # if table is not None:
+            #     custom = [x["custom_name"] for x in table]
+            #     print(f"value custom name: \n{custom}")
+            return rows
+        else:
+            return []
+
+    # = Toggle the offcanvas for the edit sequence annotations options ================= #
+    @app.callback(
+        Output("offcanvas-edit-sequence-annotations", "is_open"),
+        Input("open-offcanvas-edit-sequence-annotations", "n_clicks"),
+        [State("offcanvas-edit-sequence-annotations", "is_open")],
+    )
+    def toggle_offcanvas_edit_sequence_annotations(n1, is_open):
+        if n1:
+            return not is_open
+        return is_open
+
+    # = Toggle the offcanvas for the edit gene annotations options ===================== #
+    @app.callback(
+        Output("offcanvas-edit-gene-annotations", "is_open"),
+        Input("open-offcanvas-edit-gene-annotations", "n_clicks"),
+        [State("offcanvas-edit-gene-annotations", "is_open")],
+    )
+    def toggle_offcanvas_edit_gene_annotations(n1, is_open):
+        if n1:
+            return not is_open
+        return is_open
+
+    # = RESET THE APP ================================================================== #
     @app.callback(
         Output("url", "href"),
         Input("reset-button", "n_clicks"),
@@ -1395,6 +1579,7 @@ def register_callbacks(app: dash.Dash) -> dash.Dash:
             # Return the current URL to trigger a reload
             return "/"
 
+    # = Download the plot according to user preference format ========================== #
     @app.callback(
         Output("download-plot-component", "data"),
         Input("download-plot-button", "n_clicks"),

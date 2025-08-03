@@ -186,7 +186,8 @@ def genbank_files_metadata_to_dataframes(
     -------
     gb_df : pandas.DataFrame
         DataFrame with GenBank record-level metadata, including:
-            - file number, file path, file name, record name, accession, sequence length,
+            - file number, file path, file name, custom_name, record name, accession,
+              sequence length,
               and plotting coordinates (`sequence_start`, `sequence_end`).
 
     cds_df : pandas.DataFrame
@@ -203,6 +204,7 @@ def genbank_files_metadata_to_dataframes(
         "file_number",
         "file_path",
         "file_name",
+        "custom_name",
         "record_name",
         "accession",
         "length",
@@ -214,6 +216,7 @@ def genbank_files_metadata_to_dataframes(
         file_number=[],
         file_path=[],
         file_name=[],
+        custom_name=[],
         record_name=[],
         accession=[],
         length=[],
@@ -222,14 +225,20 @@ def genbank_files_metadata_to_dataframes(
     )
     # Initiate a list of cds DataFrames
     cds_dataframes = []
+
     # Iterate over GenBank files
     for i, gb_file in enumerate(gb_files):
         # fill data related to the file
         gb_files_data["file_number"].append(i)
         gb_files_data["file_path"].append(gb_file)
         gb_files_data["file_name"].append(gb_file.stem)
+
+        # Add an empty string to custom name for future manipulation in the GUI
+        gb_files_data["custom_name"].append("")
+
         # Read the file into a temporary variable
         record = SeqIO.read(gb_file, "genbank")
+
         # fill data related to the GenBank record
         gb_files_data["record_name"].append(record.name)
         gb_files_data["accession"].append(record.id)
@@ -242,6 +251,7 @@ def genbank_files_metadata_to_dataframes(
         cds_dataframes.append(
             parse_genbank_cds_to_df(record=record, file_number=i, accession=record.id)
         )
+
     # Create the GenBank files DataFrame
     gb_df = DataFrame(gb_files_data, columns=headers_gb_files_df)
     # Concatenate the cds_dataframes list into a single DataFrame
