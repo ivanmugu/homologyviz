@@ -351,20 +351,20 @@ def make_tab_view() -> dbc.Tab:
                         ),
                         className="d-flex justify-content-evenly mb-1",
                     ),
-                    dbc.Row(  # TODO: remove this sections. Not needed.
-                        make_dmc_select(
-                            id="annotate-sequences",
-                            label="Annotate Sequences",
-                            value="no",
-                            data=[
-                                {"value": "no", "label": "No"},
-                                {"value": "accession", "label": "Accession"},
-                                {"value": "name", "label": "Sequence name"},
-                                {"value": "fname", "label": "File name"},
-                            ],
-                        ),
-                        className="d-flex justify-content-evenly mb-1",
-                    ),
+                    # dbc.Row(  # TODO: remove this sections. Not needed.
+                    #     make_dmc_select(
+                    #         id="annotate-sequences",
+                    #         label="Annotate Sequences",
+                    #         value="no",
+                    #         data=[
+                    #             {"value": "no", "label": "No"},
+                    #             {"value": "accession", "label": "Accession"},
+                    #             {"value": "name", "label": "Sequence name"},
+                    #             {"value": "fname", "label": "File name"},
+                    #         ],
+                    #     ),
+                    #     className="d-flex justify-content-evenly mb-1",
+                    # ),
                     dbc.Row(
                         make_dmc_select(
                             id="scale-bar",

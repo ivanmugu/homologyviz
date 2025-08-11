@@ -128,7 +128,7 @@ def handle_plot_button_click(
     color_scale_state: str,
     range_slider_state: list[int, int],
     is_set_to_extreme_homologies: bool,
-    annotate_sequences_state: str,
+    annotation_column_choice_state: str,
     annotate_genes_state: str,
     use_genes_info_from_state: str,
     homology_style_state: str,
@@ -161,8 +161,8 @@ def handle_plot_button_click(
     is_set_to_extreme_homologies : bool
         Whether to stretch the color scale to the min/max homology identity values in the
         data.
-    annotate_sequences_state : str
-        Whether and how to annotate sequence names.
+    annotation_column_choice_state : str
+        Wheter and how to annotate sequence names.
     annotate_genes_state : str
         Whether gene features shold be annotated.
     use_genes_info_from_state : str
@@ -208,7 +208,7 @@ def handle_plot_button_click(
     dash_parameters.colorscale_vmin = range_slider_state[0] / 100
     dash_parameters.colorscale_vmax = range_slider_state[1] / 100
     dash_parameters.set_colorscale_to_extreme_homologies = is_set_to_extreme_homologies
-    dash_parameters.annotate_sequences = annotate_sequences_state
+    dash_parameters.annotate_sequences = annotation_column_choice_state
     dash_parameters.annotate_genes = annotate_genes_state
     dash_parameters.annotate_genes_with = use_genes_info_from_state
     dash_parameters.style_homology_regions = homology_style_state
@@ -670,51 +670,6 @@ def update_genes_annotations(
     return fig
 
 
-def update_dna_sequences_annotations(
-    fig: Figure,
-    dash_parameters: PlotParameters,
-    annotate_sequences_state: str,
-) -> Figure:
-    """
-    Update DNA sequences annotations in the plot based on user preferences.
-
-    If the user changes either the annotation source (e.g., accession number, sequence
-    name, or file name) or the visibility of annotation (no), the function updates the
-    figure accordingly. If no changes are neede, the input figure is returned unchanged.
-
-    Parameters
-    ----------
-    fig : plotly.graph_objects.Figure.
-        The current Plotly figure to update.
-    dash_parameters : PlotParameters
-        Object holding all plotting configuration and data.
-    annotate_sequences_state : str
-        Desired sequence annotation display setting (e.g., "accession", "name", "fname",
-        "no").
-
-    Returns
-    -------
-    fig : plotly.graph_objects.Figure
-        The updated or original Plotly figure, depending on whether changes are needed.
-    """
-    if annotate_sequences_state != dash_parameters.annotate_sequences:
-        # Change value of dash_parameters -> annotate_sequences
-        dash_parameters.annotate_sequences = annotate_sequences_state
-        # Remove any dna sequence annotations
-        fig = plt.remove_annotations_by_name(fig, "Sequence annotation:")
-        # If annotate_sequences_state is not "no" add annotations.
-        if annotate_sequences_state != "no":
-            fig = plt.annotate_dna_sequences(
-                fig=fig,
-                gb_records=dash_parameters.gb_df,
-                longest_sequence=dash_parameters.longest_sequence,
-                number_gb_records=dash_parameters.number_gb_records,
-                annotate_with=dash_parameters.annotate_sequences,
-                y_separation=dash_parameters.y_separation,
-            )
-    return fig
-
-
 def update_gb_dataframe_custom_name(table: list[dict], gb_df: DataFrame):
     """
     Update the 'custom_name' column of a DataFrame using values from a table of
@@ -868,7 +823,6 @@ def handle_update_view_click(
     homology_style_state: str,
     use_genes_info_from_state: str,
     annotate_genes_state: str,
-    annotate_sequences_state: str,
     scale_bar_state: str,
     minimum_homology_length_state: int,
 ) -> tuple[Figure, None, bool]:
@@ -895,8 +849,6 @@ def handle_update_view_click(
         Indicate source for genes annotations (e.g. "CDS product", "CDS gene").
     annotate_genes_state : str
         whether gene features shold be annotated.
-    annotate_sequences_state : str
-        Whether and how to annotate sequence names.
     scale_bar_state : str
         Whether to display the scale bar ("yes" or "no").
     minimum_homology_length_state : int
@@ -927,11 +879,6 @@ def handle_update_view_click(
         use_genes_info_from_state,
         annotate_genes_state,
     )
-
-    # # Update DNA sequences annotations
-    # fig = update_dna_sequences_annotations(
-    #     fig, dash_parameters, annotate_sequences_state
-    # )
 
     # Toggle scale bar
     fig = update_scale_bar(fig, dash_parameters, scale_bar_state)
@@ -1074,7 +1021,6 @@ def register_callbacks(app: dash.Dash) -> dash.Dash:
             State("homology-style", "value"),
             State("minimum-homology-length", "value"),
             State("is-set-to-extreme-homologies", "data"),
-            State("annotate-sequences", "value"),
             State("annotate-genes", "value"),
             State("scale-bar", "value"),
             State("use-genes-info-from", "value"),
@@ -1104,7 +1050,6 @@ def register_callbacks(app: dash.Dash) -> dash.Dash:
         homology_style_state: str,
         minimum_homology_length_state: int,
         is_set_to_extreme_homologies: bool,
-        annotate_sequences_state: str,
         annotate_genes_state: str,
         scale_bar_state: str,
         use_genes_info_from_state: str,
@@ -1162,8 +1107,6 @@ def register_callbacks(app: dash.Dash) -> dash.Dash:
             Minimum homology length (in bp) to display in the plot.
         is_set_to_extreme_homologies : bool
             Whether to stretch the color scale to the dataset min/max identity values.
-        annotate_sequences_state : str
-            Whether and how to annotate DNA sequences (e.g., "accession", "name", "no").
         annotate_genes_state : str
             Whether and where to annotate gene features (e.g., "top", "bottom", "no").
         scale_bar_state : str
@@ -1172,6 +1115,12 @@ def register_callbacks(app: dash.Dash) -> dash.Dash:
             Source of gene labels used for annotation (e.g., "CDS product", "CDS gene").
         title_input_state : str
             String holding the figure's title.
+        sequence_table_state : list[dict[str, str, str, str, str]] | None
+            Table from 'Edit Sequence Annotations' with the following columns: File,
+            Accession, Record Name, File name, and Custom name.
+        annotation_column_choice_state : str
+            Whether and how to annotate DNA sequences (e.g., "accession", "name", "no",
+            "custom").
 
         Returns
         -------
@@ -1188,7 +1137,6 @@ def register_callbacks(app: dash.Dash) -> dash.Dash:
         - Uses `dash.callback_context` to determine which button triggered the callback.
         - This function is central to all updates affecting the alignment plot.
         """
-        # TODO: fix annotate_squences_state with annotation_column_choice_state
         # Use context to find the button that triggered the callback.
         ctx = dash.callback_context
         button_id = ctx.triggered[0]["prop_id"].split(".")[0]
@@ -1205,7 +1153,7 @@ def register_callbacks(app: dash.Dash) -> dash.Dash:
                 color_scale_state,
                 range_slider_state,
                 is_set_to_extreme_homologies,
-                annotate_sequences_state,
+                annotation_column_choice_state,
                 annotate_genes_state,
                 use_genes_info_from_state,
                 homology_style_state,
@@ -1230,7 +1178,6 @@ def register_callbacks(app: dash.Dash) -> dash.Dash:
                 homology_style_state,
                 use_genes_info_from_state,
                 annotate_genes_state,
-                annotate_sequences_state,
                 scale_bar_state,
                 minimum_homology_length_state,
             )
