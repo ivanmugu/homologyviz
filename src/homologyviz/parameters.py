@@ -54,15 +54,21 @@ class PlotParameters:
         - accession: use the accesion number
         - name: use the sequence name
         - fname: use the file name
-    annotate_genes : str
+    annotate_genes_from : str
+        Annotate genes using GenBank file metadata stored in `CDS`. Options:
+        - gene: use the gene name
+        - product: use the product name
+        - custom: use a custom annotation provided by the user in the `edit` tab. This
+            option is only available when the user has selected genes in the `edit` tab
+            and provided a custom annotation.
+    annotate_genes_positions : str
         Annotate genes on the DNA sequences. Options:
-        - no: no annotations
+        - no: do not annotate genes.
         - top: annotate only the genes at the top sequence.
         - bottom: annotate only the genes at the bottom sequence.
         - top-bottom: annotate only the genes at the top and bottom sequences.
-    annotate_genes_with : str
-        Annotate genes using GenBank file metadata stored in `CDS gene` or `CDS product`.
-        Options are `gene` and `product`.
+        - all-above: annotate all genes above the sequences.
+        - all-below: annotate all genes below the sequences.
     style_homology_regions : str
         Homology connector style. Options:
         - straight : the shadows representing homologies will have straight lines.
@@ -113,8 +119,8 @@ class PlotParameters:
         colorscale_vmax: None | float = None,
         set_colorscale_to_extreme_homologies: None | bool = None,
         annotate_sequences: None | str = None,
-        annotate_genes: None | str = None,
-        annotate_genes_with: None | str = None,
+        annotate_genes_from: None | str = None,
+        annotate_genes_positions: None | str = None,
         style_homology_regions: None | str = None,
         minimum_homology_length: None | int = None,
         add_scale_bar: None | str = None,
@@ -139,8 +145,8 @@ class PlotParameters:
         self.colorscale_vmax = colorscale_vmax
         self.set_colorscale_to_extreme_homologies = set_colorscale_to_extreme_homologies
         self.annotate_sequences = annotate_sequences
-        self.annotate_genes = annotate_genes
-        self.annotate_genes_with = annotate_genes_with
+        self.annotate_genes_from = annotate_genes_from
+        self.annotate_genes_positions = annotate_genes_positions
         self.style_homology_regions = style_homology_regions
         self.minimum_homology_length = minimum_homology_length
         self.add_scale_bar = add_scale_bar

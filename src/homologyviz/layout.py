@@ -18,10 +18,8 @@ import dash_ag_grid as dag
 from dash import Dash, html, dcc
 import dash_bootstrap_components as dbc
 import dash_mantine_components as dmc
-from dash.development.base_component import Component
 from dash_iconify import DashIconify
 import plotly.express as px
-
 
 TAB_LABEL_STYLE = {
     "fontSize": "14px",
@@ -29,7 +27,7 @@ TAB_LABEL_STYLE = {
 }
 
 
-def make_dmc_select(**kwargs) -> Component:
+def make_dmc_select(**kwargs) -> dmc.Select:
     """
     Create a styled Dash Mantine Components (DMC) Select element.
 
@@ -45,8 +43,7 @@ def make_dmc_select(**kwargs) -> Component:
 
     Returns
     -------
-    Component
-        A configured `dmc.Select` component ready to be used in the Dash layout.
+    A configured `dmc.Select` component ready to be used in the Dash layout.
     """
     return dmc.Select(
         w=200,
@@ -320,47 +317,33 @@ def make_tab_view() -> dbc.Tab:
                         ),
                         className="d-flex justify-content-evenly my-1",
                     ),
-                    dbc.Row(
-                        make_dmc_select(
-                            label="Get Genes Info From",
-                            id="use-genes-info-from",
-                            value="gene",
-                            data=[
-                                {"value": "gene", "label": "CDS Gene"},
-                                {"value": "product", "label": "CDS Product"},
-                            ],
-                        ),
-                        className="d-flex justify-content-evenly mb-1",
-                    ),
-                    dbc.Row(
-                        make_dmc_select(
-                            id="annotate-genes",
-                            label="Annotate Genes",
-                            value="no",
-                            data=[
-                                {"value": "no", "label": "No"},
-                                {"value": "top", "label": "Top genes"},
-                                {"value": "bottom", "label": "Bottom genes"},
-                                {
-                                    "value": "top-bottom",
-                                    "label": "Top and bottom genes",
-                                },
-                                {"value": "all-above", "label": "All genes above"},
-                                {"value": "all-below", "label": "All genes below"},
-                            ],
-                        ),
-                        className="d-flex justify-content-evenly mb-1",
-                    ),
-                    # dbc.Row(  # TODO: remove this sections. Not needed.
+                    # dbc.Row(
                     #     make_dmc_select(
-                    #         id="annotate-sequences",
-                    #         label="Annotate Sequences",
+                    #         label="Get Genes Info From",
+                    #         id="use-genes-info-from",
+                    #         value="gene",
+                    #         data=[
+                    #             {"value": "gene", "label": "CDS Gene"},
+                    #             {"value": "product", "label": "CDS Product"},
+                    #         ],
+                    #     ),
+                    #     className="d-flex justify-content-evenly mb-1",
+                    # ),
+                    # dbc.Row(
+                    #     make_dmc_select(
+                    # id="annotate-genes",
+                    #         label="Annotate Genes",
                     #         value="no",
                     #         data=[
                     #             {"value": "no", "label": "No"},
-                    #             {"value": "accession", "label": "Accession"},
-                    #             {"value": "name", "label": "Sequence name"},
-                    #             {"value": "fname", "label": "File name"},
+                    #             {"value": "top", "label": "Top genes"},
+                    #             {"value": "bottom", "label": "Bottom genes"},
+                    #             {
+                    #                 "value": "top-bottom",
+                    #                 "label": "Top and bottom genes",
+                    #             },
+                    #             {"value": "all-above", "label": "All genes above"},
+                    #             {"value": "all-below", "label": "All genes below"},
                     #         ],
                     #     ),
                     #     className="d-flex justify-content-evenly mb-1",
@@ -576,7 +559,7 @@ def make_offcanvas_sequence_table() -> dag.AgGrid:
     )
 
 
-def make_offcanvas_segment_control() -> html.Div:
+def make_offcanvas_update_sequence_segment_control() -> html.Div:
     """Make offcanvas segment control"""
     return html.Div(
         children=[
@@ -608,16 +591,16 @@ def make_offcanvas_segment_control() -> html.Div:
     )
 
 
-def make_offcanvas_update_sequence_text() -> dmc.Text:
+def make_offcanvas_update_annotations_text() -> dmc.Text:
     return dmc.Text(
         "You can type a custom name in the ✎ Custom name column for annotation"
     )
 
 
-def make_offcanvas_update_sequences_button() -> dmc.Button:
+def make_offcanvas_update_button(name: str, id: str) -> dmc.Button:
     return dmc.Button(
-        "Update",
-        id="offcanvas-update-sequence-annotations-button",
+        name,
+        id=id,
         leftSection=DashIconify(
             icon="radix-icons:update",
             width=25,
@@ -631,21 +614,25 @@ def make_offcanvas_update_sequences_button() -> dmc.Button:
     )
 
 
-def make_offcanvas_paper() -> dmc.Paper:
-    """Make offcanvas paper"""
+def make_offcanvas_edit_sequence_paper() -> dmc.Paper:
+    """Make offcanvas paper for sequence table"""
     return dmc.Paper(
         children=[
             dbc.Row(
-                make_offcanvas_segment_control(),
-                # className="mt-1",
+                children=[
+                    make_offcanvas_update_sequence_segment_control(),
+                ]
             ),
             dbc.Row(
-                [
+                children=[
                     dbc.Col(
-                        make_offcanvas_update_sequence_text(),
+                        make_offcanvas_update_annotations_text(),
                     ),
                     dbc.Col(
-                        make_offcanvas_update_sequences_button(),
+                        make_offcanvas_update_button(
+                            name="Update",
+                            id="offcanvas-update-sequence-annotations-button",
+                        ),
                     ),
                 ],
                 justify="center",
@@ -669,9 +656,9 @@ def make_offcanvas_edit_sequence_annotations() -> dbc.Offcanvas:
         backdrop="static",
         children=[
             dbc.Row(
-                [
+                children=[
                     dbc.Col(
-                        make_offcanvas_paper(),
+                        make_offcanvas_edit_sequence_paper(),
                         width=10,
                     ),
                 ],
@@ -680,7 +667,7 @@ def make_offcanvas_edit_sequence_annotations() -> dbc.Offcanvas:
                 align="center",
             ),
             dbc.Row(
-                [
+                children=[
                     dbc.Col(
                         make_offcanvas_sequence_table(),
                         width=10,
@@ -692,75 +679,364 @@ def make_offcanvas_edit_sequence_annotations() -> dbc.Offcanvas:
     )
 
 
+def make_offcanvas_gene_table() -> dag.AgGrid:
+    """
+    Make the offcanvas gene table
+
+    Returns
+    -------
+    dag.AgGrid
+    """
+    return dag.AgGrid(
+        id="gene-table",
+        columnDefs=[
+            {
+                "headerName": "CDS",
+                "field": "cds_number",
+                "width": 80,
+                "maxWidth": 100,
+                "minWidth": 40,
+                "suppressSizeToFit": True,
+                "rowDrag": False,
+                "sortable": False,
+                "editable": False,
+                "checkboxSelection": False,
+                "headerCheckboxSelection": False,
+                "cellStyle": {"fontSize": "12px"},
+            },
+            {
+                "headerName": "Accession",
+                "field": "accession",
+                "width": 140,
+                "maxWidth": 160,
+                "minWidth": 100,
+                "suppressSizeToFit": True,
+                "rowDrag": False,
+                "sortable": False,
+                "editable": False,
+                "checkboxSelection": False,
+                "headerCheckboxSelection": False,
+                "cellStyle": {"fontSize": "12px"},
+            },
+            {
+                "headerName": "Gene",
+                "field": "gene",
+                "width": 140,
+                "maxWidth": 160,
+                "minWidth": 100,
+                "suppressSizeToFit": True,
+                "rowDrag": False,
+                "sortable": False,
+                "editable": True,
+                "checkboxSelection": False,
+                "headerCheckboxSelection": False,
+                "cellStyle": {"fontSize": "12px"},
+            },
+            {
+                "headerName": "Product",
+                "field": "product",
+                "width": 200,
+                "minWidth": 100,
+                "suppressSizeToFit": True,
+                "rowDrag": False,
+                "sortable": False,
+                "editable": True,
+                "checkboxSelection": False,
+                "headerCheckboxSelection": False,
+                "cellStyle": {"fontSize": "12px"},
+            },
+            {
+                "headerName": "Custom name",
+                "field": "custom_name",
+                "headerTooltip": "Type a custom name for annotation",
+                "sortable": False,
+                "editable": True,
+                "checkboxSelection": False,
+                "headerCheckboxSelection": False,
+                "cellStyle": {
+                    "fontSize": "12px",
+                    "fontStyle": "italic",
+                },
+            },
+        ],
+        className="ag-theme-alpine-dark",
+    )
+
+
+def make_offcanvas_update_gene_segment_control() -> html.Div:
+    """Make offcanvas segment control"""
+    return html.Div(
+        children=[
+            dbc.Label(
+                "Annotate Genes From:",
+                style={
+                    "fontSize": "16px",
+                },
+            ),
+            dmc.SegmentedControl(
+                id="gene-annotation-from-choice",
+                data=[
+                    {"label": "Gene", "value": "gene"},
+                    {"label": "Product", "value": "product"},
+                    {"label": "Custom Name", "value": "custom_name"},
+                ],
+                value="gene",
+                color="#3a7ebf",
+                radius="xl",
+                size="md",
+                withItemsBorders=True,
+                styles={"fontSize": "16px"},
+                fullWidth=False,
+                transitionDuration=500,
+            ),
+        ]
+    )
+
+
+def make_offcanvas_update_gene_annotations_positions() -> html.Div:
+    """Make offcanvas segment control"""
+    return html.Div(
+        children=[
+            dbc.Label(
+                "Annotate Genes Positions:",
+                style={
+                    "fontSize": "16px",
+                },
+            ),
+            dmc.SegmentedControl(
+                id="gene-annotation-positions-choice",
+                data=[
+                    {"value": "no", "label": "No"},
+                    {"value": "top", "label": "Top"},
+                    {"value": "bottom", "label": "Bottom"},
+                    {
+                        "value": "top-bottom",
+                        "label": "Top and bottom",
+                    },
+                    {"value": "all-above", "label": "All-above"},
+                    {"value": "all-below", "label": "All-below"},
+                ],
+                value="no",
+                color="#3a7ebf",
+                radius="xl",
+                size="md",
+                withItemsBorders=True,
+                styles={"fontSize": "16px"},
+                fullWidth=False,
+                transitionDuration=500,
+            ),
+        ]
+    )
+
+
+def make_offcanvas_edit_gene_paper() -> dmc.Paper:
+    """Make offcanvas paper for gene table"""
+    return dmc.Paper(
+        children=[
+            dbc.Row(
+                children=[
+                    make_offcanvas_update_gene_annotations_positions(),
+                ]
+            ),
+            dbc.Row(
+                children=[
+                    make_offcanvas_update_gene_segment_control(),
+                ]
+            ),
+            dbc.Row(
+                children=[
+                    dbc.Col(
+                        make_offcanvas_update_annotations_text(),
+                    ),
+                    dbc.Col(
+                        make_offcanvas_update_button(
+                            name="Update",
+                            id="offcanvas-update-gene-annotations-button",
+                        ),
+                    ),
+                ],
+                justify="center",
+                align="center",
+                className="mt-1",
+            ),
+        ],
+        shadow="md",
+        radius="md",
+        p="md",
+        withBorder=True,
+    )
+
+
+def make_offcanvas_edit_gene_annotations() -> dbc.Offcanvas:
+    return dbc.Offcanvas(
+        style={"width": "80%", "fontSize": "12px"},
+        id="offcanvas-edit-gene-annotations",
+        title="Edit Gene Annotations",
+        is_open=False,
+        backdrop="static",
+        children=[
+            dbc.Row(
+                children=[
+                    dbc.Col(
+                        make_offcanvas_edit_gene_paper(),
+                        width=10,
+                    ),
+                ],
+                justify="center",
+                align="center",
+                className="mb-3",
+            ),
+            dbc.Row(
+                children=[
+                    dbc.Col(
+                        make_offcanvas_gene_table(),
+                        width=10,
+                    ),
+                ],
+                className="mb-3",
+                justify="center",
+                align="center",
+            ),
+        ],
+    )
+
+
+def make_accordion_item_edit_buttons(name: str, id: str) -> dmc.Button:
+    """
+    Create a Dash Mantine Components AccordionItem for editing the annotations of
+    sequences.
+
+    Parameters
+    ----------
+    name : str
+        The name to display on the button.
+    id : str
+        The id to assign to the button.
+
+    Returns
+    -------
+    dmc.Button
+        A Dash Mantine Components Button that opens the offcanvas for editing annotations.
+    """
+    return dmc.Button(
+        name,
+        id=id,
+        variant="light",
+        color="gray",
+        size="md",
+        fullWidth=True,
+        justify="space-between",
+        rightSection=DashIconify(icon="lucide:chevron-right", width=16),
+        style={
+            "fontSize": "14px",
+        },
+    )
+
+
+def make_accordion_item_edit_button_group() -> dmc.ButtonGroup:
+    """
+    Create a Dash Mantine Components ButtonGroup for editing the annotations of
+    sequences and genes.
+
+    Returns
+    -------
+    dmc.ButtonGroup
+        A Dash Mantine Components ButtonGroup that contains buttons to open the offcanvas
+        for editing sequence and gene annotations.
+    """
+    return dmc.ButtonGroup(
+        children=[
+            make_accordion_item_edit_buttons(
+                name="Sequences", id="open-offcanvas-edit-sequence-annotations"
+            ),
+            make_accordion_item_edit_buttons(
+                name="Genes", id="open-offcanvas-edit-gene-annotations"
+            ),
+        ],
+        style={
+            "width": "200px",
+            "padding": "0px",
+            "borderWidth": "1px",
+            "borderStyle": "solid",
+            "borderColor": "#424242",
+            "borderRadius": "5px",
+        },
+        orientation="vertical",
+    )
+
+
 def make_accordion_item_edit_sequence_annotations() -> dmc.AccordionItem:
     """
     Create the Dash Mantine Components AccordionItem for editing the annotations of
     sequences.
     """
     return dmc.AccordionItem(
-        [
+        children=[
             dmc.AccordionControl("Annotations"),
             dmc.AccordionPanel(
-                [
-                    dmc.ButtonGroup(
-                        [
-                            dmc.Button(
-                                "Sequences",
-                                id="open-offcanvas-edit-sequence-annotations",
-                                variant="light",
-                                color="gray",
-                                size="md",
-                                fullWidth=True,
-                                justify="space-between",
-                                rightSection=DashIconify(
-                                    icon="lucide:chevron-right", width=16
-                                ),
-                                style={
-                                    "fontSize": "14px",
-                                },
-                            ),
-                            dmc.Button(
-                                "Genes",
-                                id="open-offcanvas-edit-gene-annotations",
-                                variant="light",
-                                color="gray",
-                                size="md",
-                                fullWidth=True,
-                                justify="space-between",
-                                rightSection=DashIconify(
-                                    icon="lucide:chevron-right", width=16
-                                ),
-                                style={
-                                    "fontSize": "14px",
-                                },
-                            ),
-                        ],
-                        style={
-                            "width": "200px",
-                            "padding": "0px",
-                            "borderWidth": "1px",
-                            "borderStyle": "solid",
-                            "borderColor": "#424242",
-                            "borderRadius": "5px",
-                        },
-                        orientation="vertical",
-                    ),
+                children=[
+                    make_accordion_item_edit_button_group(),
                     make_offcanvas_edit_sequence_annotations(),
-                    dbc.Offcanvas(
-                        html.P(
-                            "This is the content of the Offcanvas Gene Annota. "
-                            "Close it by clicking on the close button, or "
-                            "the backdrop."
-                        ),
-                        id="offcanvas-edit-gene-annotations",
-                        title="Title",
-                        is_open=False,
-                    ),
+                    make_offcanvas_edit_gene_annotations(),
                 ],
                 className="d-flex justify-content-evenly mb-2",
             ),
         ],
         value="edit-annotations",
+    )
+
+
+def make_accordion_item_edit_color_input() -> dmc.ColorInput:
+    """
+    Create a Dash Mantine Components ColorInput for editing the color of selected items.
+
+    Returns
+    -------
+    dmc.ColorInput
+        A Dash Mantine Components ColorInput that allows users to select a color (HEX
+        format) from predefined swatches or custom values.
+    """
+    return dmc.ColorInput(
+        id="color-input",
+        value="#00FFFF",
+        w=200,
+        format="hex",
+        swatches=[
+            "#FF00FF",
+            "#00FFFF",
+            "#FF1A00",
+            "#FF7400",
+            "#FFFF00",
+            "#00FF00",
+            "#973BFF",
+            "#000000",
+        ],
+        size="md",
+        style={"padding": "0"},
+        styles={
+            "input": {"fontSize": "14px"},
+            "label": {"fontSize": "14px"},
+        },
+    )
+
+
+def make_accordion_item_edit_color_button(
+    name: str, id: str, icon: str, color: str
+) -> dmc.Button:
+    return dmc.Button(
+        name,
+        id=id,
+        leftSection=DashIconify(
+            icon=icon,
+            width=25,
+        ),
+        color=color,
+        size="md",
+        variant="outline",
+        style={
+            "fontSize": "14px",
+            "width": "200px",
+        },
     )
 
 
@@ -801,54 +1077,22 @@ def make_accordion_item_edit_color() -> dmc.AccordionItem:
       items.
     """
     return dmc.AccordionItem(
-        [
+        children=[
             dmc.AccordionControl("Color of Selected Items"),
             dmc.AccordionPanel(
                 dbc.Row(
-                    [
+                    children=[
                         dbc.Row(
-                            [
-                                dmc.ColorInput(
-                                    id="color-input",
-                                    value="#00FFFF",
-                                    w=200,
-                                    format="hex",
-                                    swatches=[
-                                        "#FF00FF",
-                                        "#00FFFF",
-                                        "#FF1A00",
-                                        "#FF7400",
-                                        "#FFFF00",
-                                        "#00FF00",
-                                        "#973BFF",
-                                        "#000000",
-                                    ],
-                                    size="md",
-                                    style={"padding": "0"},
-                                    styles={
-                                        "input": {"fontSize": "14px"},
-                                        "label": {"fontSize": "14px"},
-                                    },
-                                ),
-                            ],
+                            children=make_accordion_item_edit_color_input(),
                             className="d-flex justify-content-evenly my-2",
                         ),
                         dbc.Row(
-                            [
-                                dmc.Button(
-                                    "Select Items",
+                            children=[
+                                make_accordion_item_edit_color_button(
+                                    name="Select Items",
                                     id="select-items-button",
-                                    leftSection=DashIconify(
-                                        icon="ix:select-alt",
-                                        width=25,
-                                    ),
+                                    icon="mdi:cursor-default-outline",
                                     color="#3a7ebf",
-                                    size="md",
-                                    variant="outline",
-                                    style={
-                                        "fontSize": "14px",
-                                        "width": "200px",
-                                    },
                                 ),
                                 dcc.Store(
                                     id="select-items-button-store",
@@ -858,20 +1102,12 @@ def make_accordion_item_edit_color() -> dmc.AccordionItem:
                             className="d-flex justify-content-evenly mb-2",
                         ),
                         dbc.Row(
-                            [
-                                dmc.Button(
-                                    "Change Color",
+                            children=[
+                                make_accordion_item_edit_color_button(
+                                    name="Change Color",
                                     id="change-gene-color-button",
-                                    leftSection=DashIconify(
-                                        icon="oui:color",
-                                        width=20,
-                                    ),
+                                    icon="mdi:color",
                                     color="#b303b3",
-                                    size="md",
-                                    style={
-                                        "fontSize": "14px",
-                                        "width": "200px",
-                                    },
                                 ),
                             ],
                             className="d-flex justify-content-evenly mb-2",
@@ -1094,7 +1330,6 @@ def make_tab_edit() -> dbc.Tab:
                     make_accordion_item_edit_color(),
                     make_accordion_item_homology(),
                 ],
-                # variant="separated",
                 variant="default",
                 chevronPosition="left",
                 className="mt-3",

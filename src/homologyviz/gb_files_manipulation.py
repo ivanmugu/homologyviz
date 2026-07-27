@@ -304,6 +304,7 @@ def parse_genbank_cds_to_df(
         "accession",
         "gene",
         "product",
+        "custom_name",
         "start",
         "end",
         "strand",
@@ -318,6 +319,7 @@ def parse_genbank_cds_to_df(
         accession=[],
         gene=[],
         product=[],
+        custom_name=[],
         start=[],
         end=[],
         strand=[],
@@ -336,6 +338,8 @@ def parse_genbank_cds_to_df(
         data["cds_number"].append(counter)
         counter += 1
         data["accession"].append(accession)
+        # Add an empty string to custom name for future manipulation in the GUI
+        data["custom_name"].append("")
         if gene := feature.qualifiers.get("gene", None):
             data["gene"].append(gene[0])
         else:

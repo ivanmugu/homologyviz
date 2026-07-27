@@ -34,7 +34,6 @@ from homologyviz.rectangle_bezier import RectangleCurveHeight
 from homologyviz import gb_files_manipulation as genbank
 from homologyviz import miscellaneous as misc
 
-
 # TODO: The remove_annotations_by_name needs checking because Plotly annotations can be
 # stored as Layout.annotation.Annotation objects, not just dicts. We may get a
 # TypeError on annotation["name"] so we might need to switch to annotation.name
@@ -982,9 +981,9 @@ def annotate_genes(fig: Figure, plot_parameters: PlotParameters) -> Figure:
         The Plotly figure to which gene annotations will be added.
     plot_parameters : PlotParameters
         An object containing configuration and metadata, including:
-            - `annotate_genes`: str, one of "top", "bottom", "top-bottom", "all-above", or
+            - `annotate_genes_positions`: str, one of "top", "bottom", "top-bottom", "all-above", or
               "all-below"
-            - `annotate_genes_with`: str, column name to use for labels (e.g., "gene",
+            - `annotate_genes_from`: str, column name to use for labels (e.g., "gene",
               "product")
             - `cds_df`: DataFrame with CDS metadata
             - `number_gb_records`: int, number of GenBank files
@@ -995,35 +994,36 @@ def annotate_genes(fig: Figure, plot_parameters: PlotParameters) -> Figure:
     fig : plotly.graph_objects.Figure
         The updated Plotly figure with gene annotations applied according to settings.
     """
-    annotate_genes = plot_parameters.annotate_genes
-    if annotate_genes == "top" or annotate_genes == "top-bottom":
+    annotate = plot_parameters.annotate_genes_positions
+    print(f"annotate genes positions: {annotate}")
+    if annotate == "top" or annotate == "top-bottom":
         fig = annotate_top_genes(
             fig=fig,
-            annotate_genes_with=plot_parameters.annotate_genes_with,
+            annotate_genes_with=plot_parameters.annotate_genes_from,
             number_gb_records=plot_parameters.number_gb_records,
             cds_records=plot_parameters.cds_df,
             y_separation=plot_parameters.y_separation,
         )
-    if annotate_genes == "bottom" or annotate_genes == "top-bottom":
+    if annotate == "bottom" or annotate == "top-bottom":
         fig = annotate_bottom_genes(
             fig=fig,
-            annotate_genes_with=plot_parameters.annotate_genes_with,
+            annotate_genes_with=plot_parameters.annotate_genes_from,
             number_gb_records=plot_parameters.number_gb_records,
             cds_records=plot_parameters.cds_df,
             y_separation=plot_parameters.y_separation,
         )
-    if annotate_genes == "all-above":
+    if annotate == "all-above":
         fig = annotate_all_genes_above(
             fig=fig,
-            annotate_genes_with=plot_parameters.annotate_genes_with,
+            annotate_genes_with=plot_parameters.annotate_genes_from,
             number_gb_records=plot_parameters.number_gb_records,
             cds_records=plot_parameters.cds_df,
             y_separation=plot_parameters.y_separation,
         )
-    if annotate_genes == "all-below":
+    if annotate == "all-below":
         fig = annotate_all_genes_below(
             fig=fig,
-            annotate_genes_with=plot_parameters.annotate_genes_with,
+            annotate_genes_with=plot_parameters.annotate_genes_from,
             number_gb_records=plot_parameters.number_gb_records,
             cds_records=plot_parameters.cds_df,
             y_separation=plot_parameters.y_separation,
@@ -1552,11 +1552,11 @@ def make_figure(plot_parameters: PlotParameters) -> Figure:
         number_gb_records=plot_parameters.number_gb_records,
         longest_sequence=plot_parameters.longest_sequence,
         cds_records=plot_parameters.cds_df,
-        name_from=plot_parameters.annotate_genes_with,
+        name_from=plot_parameters.annotate_genes_from,
         y_separation=plot_parameters.y_separation,
     )
     # Annotate genes
-    if plot_parameters.annotate_genes != "no":
+    if plot_parameters.annotate_genes_positions != "no":
         fig = annotate_genes(fig, plot_parameters)
 
     # Annotate DNA sequences

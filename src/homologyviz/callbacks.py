@@ -92,7 +92,9 @@ class HeartBeatsParameters:
 
 
 def save_uploaded_file(
-    file_name: str, content: str, temp_folder_path: Path
+    file_name: str,
+    content: str,
+    temp_folder_path: Path,
 ) -> str | None:
     """Decode the content and write it to a temporary file.
 
@@ -121,6 +123,7 @@ def save_uploaded_file(
 
 
 def handle_plot_button_click(
+    *,
     dash_parameters: PlotParameters,
     virtual: list[dict[str, str]],
     tmp_directory_path: Path,
@@ -129,8 +132,8 @@ def handle_plot_button_click(
     range_slider_state: list[int, int],
     is_set_to_extreme_homologies: bool,
     annotation_column_choice_state: str,
-    annotate_genes_state: str,
-    use_genes_info_from_state: str,
+    annotate_genes_from_state: str,
+    annotate_genes_positions_state: str,
     homology_style_state: str,
     minimum_homology_length_state: int,
     scale_bar_state: str,
@@ -163,10 +166,12 @@ def handle_plot_button_click(
         data.
     annotation_column_choice_state : str
         Wheter and how to annotate sequence names.
-    annotate_genes_state : str
-        Whether gene features shold be annotated.
-    use_genes_info_from_state : str
-        Indicate source for genes annotations (e.g. "CDS product", "CDS gene").
+    annotate_genes_from_state : str
+        Whether gene representations should be annotated and from where to take the
+        information (e.g. "gene", "product", or "custom").
+    annotate_genes_positions_state : str
+        Whether gene representations should be annotated at the top, bottom, top-bottom,
+        all-above, or all-below.
     homology_style_state : str
         Whether the connections between homology regions are straight or curved (Bezier).
     minimum_homology_length_state : int
@@ -209,8 +214,8 @@ def handle_plot_button_click(
     dash_parameters.colorscale_vmax = range_slider_state[1] / 100
     dash_parameters.set_colorscale_to_extreme_homologies = is_set_to_extreme_homologies
     dash_parameters.annotate_sequences = annotation_column_choice_state
-    dash_parameters.annotate_genes = annotate_genes_state
-    dash_parameters.annotate_genes_with = use_genes_info_from_state
+    dash_parameters.annotate_genes_from = annotate_genes_from_state
+    dash_parameters.annotate_genes_positions = annotate_genes_positions_state
     dash_parameters.style_homology_regions = homology_style_state
     dash_parameters.minimum_homology_length = minimum_homology_length_state
     dash_parameters.add_scale_bar = scale_bar_state
@@ -390,7 +395,9 @@ def change_color_cell_cds_dataframe(
 
 
 def handle_change_color_click(
-    figure_state: dict, dash_parameters: PlotParameters, color_input_state: str
+    figure_state: dict,
+    dash_parameters: PlotParameters,
+    color_input_state: str,
 ) -> tuple[Figure, None, bool]:
     """Change color of selected traces.
 
@@ -434,6 +441,7 @@ def handle_change_color_click(
 
 
 def handle_update_title_click(
+    *,
     figure_state: dict,
     dash_parameters: PlotParameters,
     title_input_state: str,
@@ -618,18 +626,43 @@ def update_homology_regions(
     return fig
 
 
+def update_cds_df(table: list[dict], cds_df: DataFrame, header: str) -> DataFrame:
+    """
+    Update CDS DataFrame using values from a table of dictionaries.
+
+    Parameters
+    ----------
+    table : list of dict
+        A list where each dictionary contains CDS number, accession, gene, product, and
+        custon name.
+    cds_df : pandas.DataFrame
+        The DataFrame to be updated.
+    header : str
+        Header of DataFrame to update. Option: `gene`, `product`, and `custom_name`.
+    """
+    # print(f"Before updating CDS DataFrame:\n{cds_df}")
+    update = [row[header] for row in table]
+    # print(update)
+    cds_df[header] = update
+    # print(f"After updating CDS DataFrame:\n{cds_df}")
+    return cds_df
+
+
 def update_genes_annotations(
+    *,
     fig: Figure,
     dash_parameters: PlotParameters,
-    use_genes_info_from_state: str,
-    annotate_genes_state: str,
+    annotate_genes_from_state: str,
+    annotate_genes_positions_state: str,
+    table: list[dict],
 ) -> Figure:
     """
     Update genes annotations in the plot based on user preferences.
 
-    If the user changes either the annotation source (e.g., product or gene) or the
-    visibility of annotation (top, bottom, both, or none), the function updates the
-    figure accordingly. If no change are neede, the input figure is returned unchanged.
+    If the user changes either the annotation source (e.g., gene, product, or custom) or
+    the visibility of annotation (no, top, bottom, top-bottom, all-below or all-above),
+    the function updates the figure accordingly. If no change are needed, the input figure
+    is returned unchanged.
 
     Parameters
     ----------
@@ -637,40 +670,57 @@ def update_genes_annotations(
         The current Plotly figure to update.
     dash_parameters : PlotParameters
         Object holding all plotting configuration and data.
-    use_genes_info_from_state : str
-        Source of gene annotation labels (e.g., "CDS product", "CDS gene").
-    annotate_genes_state : str
-        Desired gene annotation display setting (e.g., "top", "bottom", "both", "no").
+    annotate_genes_from_state : str
+        Source of gene annotation labels (e.g., "CDS product", "CDS gene", "custom").
+    annotate_genes_positions_state : str
+        Desired gene annotation display setting (e.g., "no", "top", "bottom",
+        "top-bottom").
+    table : list of dict
+        A list where each dictionary represents a row in the editable gene annotation
+        table, containing a "custom_name" key for custom gene labels.
 
     Returns
     -------
     fig : plotly.graph_objects.Figure.
         The updated or original Plotly figure, depending on whether changes are needed.
     """
-
+    # print(f"annotate_genes_from_state: {annotate_genes_from_state}")
+    # print(f"annotate_genes_positions_state: {annotate_genes_positions_state}")
+    # print(f"table:\n{table}")
+    # If parameters are the same, return the figure unchanged
     if (
-        use_genes_info_from_state != dash_parameters.annotate_genes_with
-        and annotate_genes_state != "no"
+        annotate_genes_from_state == dash_parameters.annotate_genes_from
+        and annotate_genes_positions_state == dash_parameters.annotate_genes_positions
     ):
+        return fig
+    # If user wants to remove gene annotations, update dash_parameters and remove any
+    # existing gene annotations from the figure.
+    if annotate_genes_positions_state == "no":
         # Update dash_parameters.
-        dash_parameters.annotate_genes_with = use_genes_info_from_state
+        dash_parameters.annotate_genes_positions = "no"
+        # Remove any gene annotations
+        fig = plt.remove_annotations_by_name(fig, "Gene annotation:")
+        return fig
+    # If user wants to add or change gene annotations, update dash_parameters and
+    # re-annotate the figure accordingly. Additionally, update CDS DataFrame.
+    if annotate_genes_positions_state != "no":
+        # Update dash_parameters.
+        dash_parameters.annotate_genes_positions = annotate_genes_positions_state
+        dash_parameters.annotate_genes_from = annotate_genes_from_state
+        # Update CDS DataFrame.
+        update_cds_df(
+            table=table,
+            cds_df=dash_parameters.cds_df,
+            header=annotate_genes_from_state,
+        )
         # Remove any gene annotations
         fig = plt.remove_annotations_by_name(fig, "Gene annotation:")
         # Annotate with the new parameter
         fig = plt.annotate_genes(fig, dash_parameters)
-    # check if value of annotate_genes_state is different in dash_parameters
-    if annotate_genes_state != dash_parameters.annotate_genes:
-        # change value of dash_parameters -> annotate_genes
-        dash_parameters.annotate_genes = annotate_genes_state
-        # Remove any gene annotations
-        fig = plt.remove_annotations_by_name(fig, "Gene annotation:")
-        # If asked add new annotations
-        if annotate_genes_state != "no":
-            fig = plt.annotate_genes(fig, dash_parameters)
-    return fig
+        return fig
 
 
-def update_gb_dataframe_custom_name(table: list[dict], gb_df: DataFrame):
+def update_gb_dataframe_custom_name(table: list[dict], gb_df: DataFrame) -> DataFrame:
     """
     Update the 'custom_name' column of a DataFrame using values from a table of
     dictionaries.
@@ -693,11 +743,12 @@ def update_gb_dataframe_custom_name(table: list[dict], gb_df: DataFrame):
 
 
 def update_dna_sequence_annotations(
+    *,
     fig: Figure,
     dash_parameters: PlotParameters,
     annotation_column_choice_state: str,
     table: list[dict],
-):
+) -> Figure:
     """
     Update DNA sequence annotations in the Plotly figure based on user-selected
     annotations options.
@@ -723,7 +774,7 @@ def update_dna_sequence_annotations(
 
     Returns
     -------
-    plotly.graph_objects.Figure
+    fig : plotly.graph_objects.Figure
         The updated figure with DNA sequence annotations added or removed based on user
         input.
     """
@@ -817,12 +868,11 @@ def update_minimum_homology_length(
 
 
 def handle_update_view_click(
+    *,
     figure_state: dict,
     dash_parameters: PlotParameters,
     align_plot_state: str,
     homology_style_state: str,
-    use_genes_info_from_state: str,
-    annotate_genes_state: str,
     scale_bar_state: str,
     minimum_homology_length_state: int,
 ) -> tuple[Figure, None, bool]:
@@ -830,8 +880,8 @@ def handle_update_view_click(
     Handle the 'update view' button click event.
 
     This function updates the current figure layout and annotations based on user
-    preferences, including alignment positioning, gene/sequence annotations, scale bar
-    visibility, and minimum homology length.
+    preferences, including alignment positioning, scale bar visibility, and minimum
+    homology length.
 
     Parameters
     ----------
@@ -845,10 +895,6 @@ def handle_update_view_click(
         "center", "right").
     homology_style_state : str
         Whether the connections between homology regions are straight or curved (Bezier).
-    use_genes_info_from_state : str
-        Indicate source for genes annotations (e.g. "CDS product", "CDS gene").
-    annotate_genes_state : str
-        whether gene features shold be annotated.
     scale_bar_state : str
         Whether to display the scale bar ("yes" or "no").
     minimum_homology_length_state : int
@@ -870,14 +916,6 @@ def handle_update_view_click(
         dash_parameters,
         align_plot_state,
         homology_style_state,
-    )
-
-    # Update genes annotations
-    fig = update_genes_annotations(
-        fig,
-        dash_parameters,
-        use_genes_info_from_state,
-        annotate_genes_state,
     )
 
     # Toggle scale bar
@@ -1008,6 +1046,7 @@ def register_callbacks(app: dash.Dash) -> dash.Dash:
             Input("update-annotations", "n_clicks"),
             Input("update-title-button", "n_clicks"),
             Input("offcanvas-update-sequence-annotations-button", "n_clicks"),
+            Input("offcanvas-update-gene-annotations-button", "n_clicks"),
         ],
         [
             State("files-table", "virtualRowData"),
@@ -1021,9 +1060,10 @@ def register_callbacks(app: dash.Dash) -> dash.Dash:
             State("homology-style", "value"),
             State("minimum-homology-length", "value"),
             State("is-set-to-extreme-homologies", "data"),
-            State("annotate-genes", "value"),
             State("scale-bar", "value"),
-            State("use-genes-info-from", "value"),
+            State("gene-annotation-positions-choice", "value"),
+            State("gene-annotation-from-choice", "value"),
+            State("gene-table", "virtualRowData"),
             State("title-input", "value"),
             State("sequence-table", "virtualRowData"),
             State("annotation-column-choice", "value"),
@@ -1039,6 +1079,7 @@ def register_callbacks(app: dash.Dash) -> dash.Dash:
         update_annotations_clicks: int | None,
         update_title_button_clicks: int | None,
         update_sequence_annotations: int | None,
+        update_gene_annotations: int | None,
         virtual: list[dict[str, str]],
         active_tab: str,
         figure_state: dict,
@@ -1050,9 +1091,10 @@ def register_callbacks(app: dash.Dash) -> dash.Dash:
         homology_style_state: str,
         minimum_homology_length_state: int,
         is_set_to_extreme_homologies: bool,
-        annotate_genes_state: str,
         scale_bar_state: str,
-        use_genes_info_from_state: str,
+        gene_annotation_positions_state: str,
+        gene_annotation_from_state: str,
+        gene_table_state: list[dict] | None,
         title_input_state: str,
         sequence_table_state: list[dict] | None,
         annotation_column_choice_state: str,
@@ -1085,6 +1127,10 @@ def register_callbacks(app: dash.Dash) -> dash.Dash:
             Click count for the button that updates annotations and plot layout.
         update_title_button_clicks : int | None
             Click count for the button that updates the figure's title.
+        update_sequence_annotations : int | None
+            Click count for the button that updates DNA sequence annotations.
+        update_gene_annotations : int | None
+            Click count for the button that updates gene annotations.
         virtual : list[dict[str, str]] | None
             Virtual row data from the GenBank file upload table.
         active_tab : str
@@ -1145,21 +1191,22 @@ def register_callbacks(app: dash.Dash) -> dash.Dash:
         # = TAB MAIN =================================================================== #
         # Perform Alignments & Plot
         if (button_id == "plot-button") and virtual:
+            print("Plot button clicked, starting alignment and plotting...")
             return handle_plot_button_click(
-                dash_parameters,
-                virtual,
-                tmp_directory_path,
-                align_plot_state,
-                color_scale_state,
-                range_slider_state,
-                is_set_to_extreme_homologies,
-                annotation_column_choice_state,
-                annotate_genes_state,
-                use_genes_info_from_state,
-                homology_style_state,
-                minimum_homology_length_state,
-                scale_bar_state,
-                title_input_state,
+                dash_parameters=dash_parameters,
+                virtual=virtual,
+                tmp_directory_path=tmp_directory_path,
+                align_plot_state=align_plot_state,
+                color_scale_state=color_scale_state,
+                range_slider_state=range_slider_state,
+                is_set_to_extreme_homologies=is_set_to_extreme_homologies,
+                annotation_column_choice_state=annotation_column_choice_state,
+                annotate_genes_from_state=gene_annotation_from_state,
+                annotate_genes_positions_state=gene_annotation_positions_state,
+                homology_style_state=homology_style_state,
+                minimum_homology_length_state=minimum_homology_length_state,
+                scale_bar_state=scale_bar_state,
+                title_input_state=title_input_state,
             )
 
         # Erase Plot & Reset All Parameters
@@ -1172,14 +1219,12 @@ def register_callbacks(app: dash.Dash) -> dash.Dash:
         # Update Annotations and View
         if button_id == "update-annotations":
             return handle_update_view_click(
-                figure_state,
-                dash_parameters,
-                align_plot_state,
-                homology_style_state,
-                use_genes_info_from_state,
-                annotate_genes_state,
-                scale_bar_state,
-                minimum_homology_length_state,
+                figure_state=figure_state,
+                dash_parameters=dash_parameters,
+                align_plot_state=align_plot_state,
+                homology_style_state=homology_style_state,
+                scale_bar_state=scale_bar_state,
+                minimum_homology_length_state=minimum_homology_length_state,
             )
 
         # = TAB EDIT =================================================================== #
@@ -1196,19 +1241,32 @@ def register_callbacks(app: dash.Dash) -> dash.Dash:
         # Insert title to plot
         if button_id == "update-title-button":
             return handle_update_title_click(
-                figure_state,
-                dash_parameters,
-                title_input_state,
+                figure_state=figure_state,
+                dash_parameters=dash_parameters,
+                title_input_state=title_input_state,
             )
 
         # Update sequence annotations
         if button_id == "offcanvas-update-sequence-annotations-button":
             fig = Figure(data=figure_state["data"], layout=figure_state["layout"])
             fig = update_dna_sequence_annotations(
-                fig,
-                dash_parameters,
-                annotation_column_choice_state,
-                sequence_table_state,
+                fig=fig,
+                dash_parameters=dash_parameters,
+                annotation_column_choice_state=annotation_column_choice_state,
+                table=sequence_table_state,
+            )
+            return fig, None, False
+
+        # Update gene annotations
+        if button_id == "offcanvas-update-gene-annotations-button":
+            print("Updating gene annotations based on user preferences...")
+            fig = Figure(data=figure_state["data"], layout=figure_state["layout"])
+            fig = update_genes_annotations(
+                fig=fig,
+                dash_parameters=dash_parameters,
+                annotate_genes_from_state=gene_annotation_from_state,
+                annotate_genes_positions_state=gene_annotation_positions_state,
+                table=gene_table_state,
             )
             return fig, None, False
 
@@ -1273,7 +1331,7 @@ def register_callbacks(app: dash.Dash) -> dash.Dash:
         return [True] * 7
 
     # = Activate the plot button only if there are files in the input table ============ #
-    # TODO: make sure the button is actevited only if there are two or more files in the
+    # TODO: make sure the button is activated only if there are two or more files in the
     # table. Also, deactivate the button if the user erases all files.
     @app.callback(
         Output("plot-button", "disabled"),
@@ -1468,9 +1526,32 @@ def register_callbacks(app: dash.Dash) -> dash.Dash:
                         "custom_name": gb_file["custom_name"],
                     }
                 )
-            # if table is not None:
-            #     custom = [x["custom_name"] for x in table]
-            #     print(f"value custom name: \n{custom}")
+            return rows
+        else:
+            return []
+
+    # = Update edit gene annotations table ============================================= #
+    @app.callback(
+        Output("gene-table", "rowData"),
+        Input("open-offcanvas-edit-gene-annotations", "n_clicks"),
+        State("gene-table", "rowData"),
+        prevent_initial_call=True,
+    )
+    def update_edit_gene_annotations_table(figure: dict, table) -> list[dict]:
+        if dash_parameters.cds_df is None:
+            return []
+        if figure:
+            rows = []
+            for _, cds in dash_parameters.cds_df.iterrows():
+                rows.append(
+                    {
+                        "cds_number": (cds["cds_number"] + 1),
+                        "gene": cds["gene"],
+                        "product": cds["product"],
+                        "accession": cds["accession"],
+                        "custom_name": cds["custom_name"],
+                    }
+                )
             return rows
         else:
             return []
