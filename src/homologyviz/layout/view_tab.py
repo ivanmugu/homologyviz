@@ -2,7 +2,7 @@ import dash_bootstrap_components as dbc
 import dash_mantine_components as dmc
 from dash_iconify import DashIconify
 
-from homologyviz.layout.constants import TAB_LABEL_STYLE, make_dmc_select
+from homologyviz.layout.common import TAB_LABEL_STYLE, make_dmc_select
 
 
 def make_view_tab() -> dbc.Tab:

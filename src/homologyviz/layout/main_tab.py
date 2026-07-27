@@ -4,7 +4,7 @@ from dash import html, dcc
 import dash_mantine_components as dmc
 from dash_iconify import DashIconify
 
-from homologyviz.layout.constants import TAB_LABEL_STYLE
+from homologyviz.layout.common import TAB_LABEL_STYLE
 
 
 def make_main_tab() -> dbc.Tab:

@@ -5,7 +5,7 @@ from dash_iconify import DashIconify
 import dash_ag_grid as dag
 import plotly.express as px
 
-from homologyviz.layout.constants import TAB_LABEL_STYLE, make_dmc_select
+from homologyviz.layout.common import TAB_LABEL_STYLE, make_dmc_select
 
 
 # ==== EDIT TITLE ==== #
