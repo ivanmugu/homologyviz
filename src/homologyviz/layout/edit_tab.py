@@ -429,6 +429,10 @@ def make_offcanvas_gene_table() -> dag.AgGrid:
                     "fontStyle": "italic",
                 },
             },
+            {"field": "file_number", "hide": True},
+            {"field": "start", "hide": True},
+            {"field": "end", "hide": True},
+            {"field": "strand", "hide": True},
         ],
         className="ag-theme-alpine-dark",
     )

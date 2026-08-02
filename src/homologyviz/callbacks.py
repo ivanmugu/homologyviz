@@ -30,23 +30,22 @@ import time
 import threading
 from flask import request, jsonify, Response
 import json
-from pandas import DataFrame
 
+from pandas import DataFrame
 import dash
 from dash import Input, Output, State
 from plotly.graph_objects import Figure
 
 from homologyviz.parameters import PlotParameters
 from homologyviz import plotter as plt
-from homologyviz.gb_files_manipulation import get_longest_sequence_dataframe
+from homologyviz.gb_files_manipulation import (
+    get_longest_sequence_dataframe,
+    update_cds_df,
+)
 
 # import logging
 # logging.basicConfig(level=logging.INFO)
 # logger = logging.getLogger(__name__)
-
-
-# TODO: If we change a color in the edit tab, the changes are return to the
-# original colors when performing any change in the view tab.
 
 
 class HeartBeatsParameters:
@@ -626,28 +625,6 @@ def update_homology_regions(
     return fig
 
 
-def update_cds_df(table: list[dict], cds_df: DataFrame, header: str) -> DataFrame:
-    """
-    Update CDS DataFrame using values from a table of dictionaries.
-
-    Parameters
-    ----------
-    table : list of dict
-        A list where each dictionary contains CDS number, accession, gene, product, and
-        custon name.
-    cds_df : pandas.DataFrame
-        The DataFrame to be updated.
-    header : str
-        Header of DataFrame to update. Option: `gene`, `product`, and `custom_name`.
-    """
-    # print(f"Before updating CDS DataFrame:\n{cds_df}")
-    update = [row[header] for row in table]
-    # print(update)
-    cds_df[header] = update
-    # print(f"After updating CDS DataFrame:\n{cds_df}")
-    return cds_df
-
-
 def update_genes_annotations(
     *,
     fig: Figure,
@@ -684,15 +661,6 @@ def update_genes_annotations(
     fig : plotly.graph_objects.Figure.
         The updated or original Plotly figure, depending on whether changes are needed.
     """
-    # print(f"annotate_genes_from_state: {annotate_genes_from_state}")
-    # print(f"annotate_genes_positions_state: {annotate_genes_positions_state}")
-    # print(f"table:\n{table}")
-    # If parameters are the same, return the figure unchanged
-    if (
-        annotate_genes_from_state == dash_parameters.annotate_genes_from
-        and annotate_genes_positions_state == dash_parameters.annotate_genes_positions
-    ):
-        return fig
     # If user wants to remove gene annotations, update dash_parameters and remove any
     # existing gene annotations from the figure.
     if annotate_genes_positions_state == "no":
@@ -703,21 +671,20 @@ def update_genes_annotations(
         return fig
     # If user wants to add or change gene annotations, update dash_parameters and
     # re-annotate the figure accordingly. Additionally, update CDS DataFrame.
-    if annotate_genes_positions_state != "no":
-        # Update dash_parameters.
-        dash_parameters.annotate_genes_positions = annotate_genes_positions_state
-        dash_parameters.annotate_genes_from = annotate_genes_from_state
-        # Update CDS DataFrame.
-        update_cds_df(
-            table=table,
-            cds_df=dash_parameters.cds_df,
-            header=annotate_genes_from_state,
-        )
-        # Remove any gene annotations
-        fig = plt.remove_annotations_by_name(fig, "Gene annotation:")
-        # Annotate with the new parameter
-        fig = plt.annotate_genes(fig, dash_parameters)
-        return fig
+    dash_parameters.annotate_genes_positions = annotate_genes_positions_state
+    dash_parameters.annotate_genes_from = annotate_genes_from_state
+    print(f"CDS table:\n{table}")
+    # Update CDS DataFrame.
+    dash_parameters.cds_df = update_cds_df(
+        table=table,
+        cds_df=dash_parameters.cds_df,
+        header=annotate_genes_from_state,
+    )
+    # Remove any gene annotations
+    fig = plt.remove_annotations_by_name(fig, "Gene annotation:")
+    # Annotate with the new parameter
+    fig = plt.annotate_genes(fig, dash_parameters)
+    return fig
 
 
 def update_gb_dataframe_custom_name(table: list[dict], gb_df: DataFrame) -> DataFrame:
@@ -1302,6 +1269,7 @@ def register_callbacks(app: dash.Dash) -> dash.Dash:
             Output("select-items-button", "disabled"),
             Output("update-title-button", "disabled"),
             Output("offcanvas-update-sequence-annotations-button", "disabled"),
+            Output("offcanvas-update-gene-annotations-button", "disabled"),
         ],
         Input("plot", "figure"),
     )
@@ -1327,8 +1295,8 @@ def register_callbacks(app: dash.Dash) -> dash.Dash:
              offcanvas-update-sequence-annotations-button].
         """
         if figure and figure.get("data", []):
-            return [False] * 7
-        return [True] * 7
+            return [False] * 8
+        return [True] * 8
 
     # = Activate the plot button only if there are files in the input table ============ #
     # TODO: make sure the button is activated only if there are two or more files in the
@@ -1550,6 +1518,10 @@ def register_callbacks(app: dash.Dash) -> dash.Dash:
                         "product": cds["product"],
                         "accession": cds["accession"],
                         "custom_name": cds["custom_name"],
+                        "file_number": cds["file_number"],
+                        "start": cds["start"],
+                        "end": cds["end"],
+                        "strand": cds["strand"],
                     }
                 )
             return rows
