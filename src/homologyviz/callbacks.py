@@ -673,7 +673,6 @@ def update_genes_annotations(
     # re-annotate the figure accordingly. Additionally, update CDS DataFrame.
     dash_parameters.annotate_genes_positions = annotate_genes_positions_state
     dash_parameters.annotate_genes_from = annotate_genes_from_state
-    print(f"CDS table:\n{table}")
     # Update CDS DataFrame.
     dash_parameters.cds_df = update_cds_df(
         table=table,
@@ -1295,23 +1294,24 @@ def register_callbacks(app: dash.Dash) -> dash.Dash:
              offcanvas-update-sequence-annotations-button].
         """
         if figure and figure.get("data", []):
-            return [False] * 8
-        return [True] * 8
+            return (False,) * 8
+        return (True,) * 8
 
     # = Activate the plot button only if there are files in the input table ============ #
-    # TODO: make sure the button is activated only if there are two or more files in the
-    # table. Also, deactivate the button if the user erases all files.
     @app.callback(
-        Output("plot-button", "disabled"),
+        [
+            Output("plot-button", "disabled"),
+            Output("trash-selected-files-button", "disabled"),
+        ],
         Input("files-table", "rowData"),
     )
     def toggle_plot_button(row_data: list[dict[str, str]] | None) -> bool:
         """
-        Enable or disable the 'Plot' button based on the presence of uploaded files.
+        Enable or disable the plot and trash buttons based on the number of uploaded
+        GenBank files.
 
-        This callback activates the 'Plot' button only when the upload table contains
-        at least one file. If no files are uploaded, the button is disabled to prevent
-        plotting without input data.
+        Both buttons are enabled only when the upload table contains at least two files.
+        Otherwise, they remain disabled.
 
         Parameters
         ----------
@@ -1320,10 +1320,11 @@ def register_callbacks(app: dash.Dash) -> dash.Dash:
 
         Returns
         -------
-        bool
-            True if the button should be disabled, False otherwise.
+        tuple[bool, bool]
+            The disabled state of the plot and trash buttons, respectively.
         """
-        return False if row_data else True
+        enabled = row_data is not None and len(row_data) >= 2
+        return (not enabled, not enabled)  # Disable both buttons if not enough files
 
     # = Activate the select items button when the user clicks on it ==================== #
     @app.callback(
