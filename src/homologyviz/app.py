@@ -18,7 +18,7 @@ import dash
 from dash import _dash_renderer
 import dash_bootstrap_components as dbc
 
-from homologyviz.callbacks import register_callbacks
+from homologyviz.callbacks.register import register_callbacks
 from homologyviz.layout.layout import create_layout
 
 from homologyviz.cli import parse_command_line_input
