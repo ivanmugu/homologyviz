@@ -136,16 +136,24 @@ def register_callbacks(app: dash.Dash) -> dash.Dash:
         list[dict]
             Uploaded list of table rows reflecting uploaded files or deletions.
         """
-        ctx = dash.callback_context
-        ctx_id = ctx.triggered[0]["prop_id"].split(".")[0]
+        ctx_id = dash.ctx.triggered_id
         print(f"clicked from update file table: {ctx_id}")
         # Update table with uploaded files.
         if (ctx_id == "upload") and filenames and contents:
             new_rows = []
             # Simulate saving each file and creating a temporary file path
             for name, content in zip(filenames, contents):
-                file_path = save_uploaded_file(name, content, tmp_directory_path)
-                new_rows.append({"filename": name, "filepath": file_path})
+                file_path = save_uploaded_file(
+                    name,
+                    content,
+                    tmp_directory_path,
+                )
+                new_rows.append(
+                    {
+                        "filename": name,
+                        "filepath": file_path,
+                    }
+                )
 
             # Append new filenames and file paths to the table data
             return current_row_data + new_rows if current_row_data else new_rows
@@ -213,7 +221,7 @@ def register_callbacks(app: dash.Dash) -> dash.Dash:
         color_input_state: str,
         select_items_state: bool,
         color_scale_state: str,
-        range_slider_state: list[int, int],
+        range_slider_state: list[int],
         align_plot_state: str,
         homology_style_state: str,
         minimum_homology_length_state: int,
@@ -311,8 +319,7 @@ def register_callbacks(app: dash.Dash) -> dash.Dash:
         - This function is central to all updates affecting the alignment plot.
         """
         # Use context to find the button that triggered the callback.
-        ctx = dash.callback_context
-        button_id = ctx.triggered[0]["prop_id"].split(".")[0]
+        button_id = dash.callback_context.triggered_id
         print(f"button_id: {button_id}")
 
         # = TAB MAIN =================================================================== #
@@ -433,7 +440,7 @@ def register_callbacks(app: dash.Dash) -> dash.Dash:
         ],
         Input("plot", "figure"),
     )
-    def toggle_update_buttons(figure: dict) -> list[bool]:
+    def toggle_update_buttons(figure: dict) -> tuple[bool, ...]:
         """
         Enable or disable editing buttons based on whether a plot is currently displayed.
 
@@ -448,11 +455,12 @@ def register_callbacks(app: dash.Dash) -> dash.Dash:
 
         Returns
         -------
-        list[bool]
-            A list of six boolean values corresponding to the disabled states of:
+        tuple[bool, ...]
+            A tuple of six boolean values corresponding to the disabled states of:
             [erase-button, update-annotations, change-gene-color-button,
              change-homology-color-button, select-items-button, update-title-button,
-             offcanvas-update-sequence-annotations-button].
+             offcanvas-update-sequence-annotations-button,
+             offcanvas-update-gene-annotations-button].
         """
         if figure and figure.get("data", []):
             return (False,) * 8
@@ -466,7 +474,7 @@ def register_callbacks(app: dash.Dash) -> dash.Dash:
         ],
         Input("files-table", "rowData"),
     )
-    def toggle_plot_button(row_data: list[dict[str, str]] | None) -> bool:
+    def toggle_plot_button(row_data: list[dict[str, str]] | None) -> tuple[bool, bool]:
         """
         Enable or disable the plot and trash buttons based on the number of uploaded
         GenBank files.
@@ -599,7 +607,7 @@ def register_callbacks(app: dash.Dash) -> dash.Dash:
         if not ctx.triggered:
             return option1
 
-        triggered_id = ctx.triggered[0]["prop_id"].split(".")[0]
+        triggered_id = ctx.triggered_id
 
         if triggered_id == "extreme-homologies-button":
             return option2
@@ -624,13 +632,13 @@ def register_callbacks(app: dash.Dash) -> dash.Dash:
         Parameters
         ----------
         value : str
-            The name of the selected Plotly sequential colorscale (e.g., "Greys",
-            "Blues").
+            The name of the selected Plotly sequential colorscale (e.g., "Greys", "Blues")
 
         Returns
         -------
         figure : plotly.graph_objects.Figure
-            A Plotly figure displaying a horizontal gradient representing the selected colorscale.
+            A Plotly figure displaying a horizontal gradient representing the selected
+            colorscale.
         """
         return plt.create_color_line(value.capitalize())
 
@@ -638,13 +646,36 @@ def register_callbacks(app: dash.Dash) -> dash.Dash:
     @app.callback(
         Output("sequence-table", "rowData"),
         Input("open-offcanvas-edit-sequence-annotations", "n_clicks"),
-        State("sequence-table", "rowData"),
         prevent_initial_call=True,
     )
-    def update_edit_sequence_annotations_table(figure: dict, table) -> list[dict]:
+    def populate_sequence_annotations_table(
+        n_clicks: int | None,
+    ) -> list[dict]:
+        """
+        Populate the sequence annotation table when the annotation editor is opened.
+        The table is built from the GenBank sequence information stored in
+        ``dash_parameters.gb_df``. It displays the available sequence annotation
+        fields, including accession, record name, file name, and custom name.
+        This callback only initializes the table contents. User edits made to the
+        ``custom_name`` column are read later by the plot callback when the user
+        applies the sequence annotation changes.
+
+        Parameters
+        ----------
+        n_clicks : int or None
+            Number of times the button for opening the sequence annotation editor
+            has been clicked.
+
+        Returns
+        -------
+        list[dict]
+            Rows used to populate the sequence annotation table. Returns an empty
+            list if no GenBank sequence data are available.
+        """
         if dash_parameters.gb_df is None:
             return []
-        if figure:
+
+        if n_clicks:
             rows = []
             for _, gb_file in dash_parameters.gb_df.iterrows():
                 rows.append(
@@ -657,20 +688,45 @@ def register_callbacks(app: dash.Dash) -> dash.Dash:
                     }
                 )
             return rows
-        else:
-            return []
+
+        return []
 
     # = Update edit gene annotations table ============================================= #
     @app.callback(
         Output("gene-table", "rowData"),
         Input("open-offcanvas-edit-gene-annotations", "n_clicks"),
-        State("gene-table", "rowData"),
         prevent_initial_call=True,
     )
-    def update_edit_gene_annotations_table(figure: dict, table) -> list[dict]:
+    def populate_gene_annotations_table(
+        n_clicks: int | None,
+    ) -> list[dict]:
+        """
+        Populate the gene annotation table when the annotation editor is opened.
+
+        The table is built from the CDS information stored in ``dash_parameters.cds_df``.
+        It displays gene annotation fields together with the identifiers and genomic
+        coordinates needed to associate each table row with its corresponding CDS.
+
+        This callback only initializes the table contents. User edits made to editable
+        annotation columns are read later by the plot callback when the user applies the
+        gene annotation changes.
+
+        Parameters
+        ----------
+        n_clicks : int or None
+            Number of times the button for opening the gene annotation editor has been
+            clicked.
+
+        Returns
+        -------
+        list[dict]
+            Rows used to populate the gene annotation table. Returns an empty list if no
+            CDS data are available.
+        """
         if dash_parameters.cds_df is None:
             return []
-        if figure:
+
+        if n_clicks:
             rows = []
             for _, cds in dash_parameters.cds_df.iterrows():
                 rows.append(
@@ -687,8 +743,8 @@ def register_callbacks(app: dash.Dash) -> dash.Dash:
                     }
                 )
             return rows
-        else:
-            return []
+
+        return []
 
     # = Toggle the offcanvas for the edit sequence annotations options ================= #
     @app.callback(
@@ -870,7 +926,8 @@ def register_callbacks(app: dash.Dash) -> dash.Dash:
 
     def monitor_heartbeats() -> None:
         """
-        Continuously monitor heartbeat timestamps to detect tab closure and shut down the server.
+        Continuously monitor heartbeat timestamps to detect tab closure and shut down the
+        server.
 
         This function runs in a background thread and checks whether the most recent
         heartbeat has timed out (based on `heartbeat_parameters.timeout_seconds`).
