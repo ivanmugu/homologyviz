@@ -19,6 +19,62 @@ from homologyviz.callbacks.updates import (
 )
 
 
+def figure_from_state(figure_state: dict) -> Figure:
+    """
+    Rebuild a Plotly Figure from its Dash figure state.
+
+    Parameters
+    ----------
+    figure_state : dict
+        Serialized Plotly figure containing ``data`` and ``layout``.
+
+    Returns
+    -------
+    plotly.graph_objects.Figure
+        Reconstructed Plotly figure.
+    """
+    return Figure(
+        data=figure_state["data"],
+        layout=figure_state["layout"],
+    )
+
+
+def handle_sequence_annotations_update(
+    figure_state: dict,
+    dash_parameters: PlotParameters,
+    annotation_column_choice_state: str,
+    sequence_table_state: list[dict] | None,
+) -> tuple[Figure, None, bool]:
+    """Apply sequence annotation edits to the current figure."""
+    fig = figure_from_state(figure_state)
+    fig = update_dna_sequence_annotations(
+        fig=fig,
+        dash_parameters=dash_parameters,
+        annotation_column_choice_state=annotation_column_choice_state,
+        table=sequence_table_state,
+    )
+    return fig, None, False
+
+
+def handle_gene_annotations_update(
+    figure_state: dict,
+    dash_parameters: PlotParameters,
+    gene_annotation_from_state: str,
+    gene_annotation_positions_state: str,
+    gene_table_state: list[dict] | None,
+) -> tuple[Figure, None, bool]:
+    """Apply gene annotation edits to the current figure."""
+    fig = figure_from_state(figure_state)
+    fig = update_genes_annotations(
+        fig=fig,
+        dash_parameters=dash_parameters,
+        annotate_genes_from_state=gene_annotation_from_state,
+        annotate_genes_positions_state=gene_annotation_positions_state,
+        table=gene_table_state,
+    )
+    return fig, None, False
+
+
 def register_plot_callbacks(
     app: dash.Dash,
     dash_parameters: PlotParameters,
@@ -60,212 +116,168 @@ def register_plot_callbacks(
         return (disabled,) * 8
 
     @app.callback(
-        [
+        output=[
             Output("plot", "figure"),
             Output("plot", "clickData"),
             Output("plot-skeleton", "visible"),
         ],
-        [
-            Input("plot-button", "n_clicks"),
-            Input("erase-button", "n_clicks"),
-            Input("plot", "clickData"),
-            Input("change-homology-color-button", "n_clicks"),
-            Input("change-gene-color-button", "n_clicks"),
-            Input("update-annotations", "n_clicks"),
-            Input("update-title-button", "n_clicks"),
-            Input("offcanvas-update-sequence-annotations-button", "n_clicks"),
-            Input("offcanvas-update-gene-annotations-button", "n_clicks"),
-        ],
-        [
-            State("files-table", "virtualRowData"),
-            State("tabs", "active_tab"),
-            State("plot", "figure"),
-            State("color-input", "value"),
-            State("select-items-button-store", "data"),
-            State("color-scale", "value"),
-            State("range-slider", "value"),
-            State("align-plot", "value"),
-            State("homology-style", "value"),
-            State("minimum-homology-length", "value"),
-            State("is-set-to-extreme-homologies", "data"),
-            State("scale-bar", "value"),
-            State("gene-annotation-positions-choice", "value"),
-            State("gene-annotation-from-choice", "value"),
-            State("gene-table", "virtualRowData"),
-            State("title-input", "value"),
-            State("sequence-table", "virtualRowData"),
-            State("annotation-column-choice", "value"),
-        ],
+        inputs=dict(
+            _actions=dict(
+                plot=Input("plot-button", "n_clicks"),
+                erase=Input("erase-button", "n_clicks"),
+                change_homology_color=Input("change-homology-color-button", "n_clicks"),
+                change_gene_color=Input("change-gene-color-button", "n_clicks"),
+                update_view=Input("update-annotations", "n_clicks"),
+                update_title=Input("update-title-button", "n_clicks"),
+                update_sequence_annotations=Input(
+                    "offcanvas-update-sequence-annotations-button", "n_clicks"
+                ),
+                update_gene_annotations=Input(
+                    "offcanvas-update-gene-annotations-button", "n_clicks"
+                ),
+            ),
+            click_data=Input("plot", "clickData"),
+        ),
+        state=dict(
+            virtual=State("files-table", "virtualRowData"),
+            active_tab=State("tabs", "active_tab"),
+            figure_state=State("plot", "figure"),
+            title_input_state=State("title-input", "value"),
+            edit=dict(
+                color=State("color-input", "value"),
+                select_item=State("select-items-button-store", "data"),
+            ),
+            view=dict(
+                align_plot=State("align-plot", "value"),
+                homology_style=State("homology-style", "value"),
+                minimum_homology_length=State("minimum-homology-length", "value"),
+                scale_bar=State("scale-bar", "value"),
+            ),
+            annotations=dict(
+                gene_positions=State("gene-annotation-positions-choice", "value"),
+                gene_from=State("gene-annotation-from-choice", "value"),
+                gene_table=State("gene-table", "virtualRowData"),
+                sequence_table=State("sequence-table", "virtualRowData"),
+                sequence_column=State("annotation-column-choice", "value"),
+            ),
+            homology_colors=dict(
+                color_scale=State("color-scale", "value"),
+                identity_range=State("range-slider", "value"),
+                use_extreme=State("is-set-to-extreme-homologies", "data"),
+            ),
+        ),
         prevent_initial_call=True,
     )
     def main_plot(
-        plot_button_clicks: int | None,
-        clear_button_clicks: int | None,
+        _actions: dict,
         click_data: dict | None,
-        change_homology_color_button_clicks: int | None,
-        change_gene_color_button_clicks: int | None,
-        update_annotations_clicks: int | None,
-        update_title_button_clicks: int | None,
-        update_sequence_annotations: int | None,
-        update_gene_annotations: int | None,
-        virtual: list[dict[str, str]],
+        virtual: list[dict[str, str]] | None,
         active_tab: str,
         figure_state: dict,
-        color_input_state: str,
-        select_items_state: bool,
-        color_scale_state: str,
-        range_slider_state: list[int],
-        align_plot_state: str,
-        homology_style_state: str,
-        minimum_homology_length_state: int,
-        is_set_to_extreme_homologies: bool,
-        scale_bar_state: str,
-        gene_annotation_positions_state: str,
-        gene_annotation_from_state: str,
-        gene_table_state: list[dict] | None,
         title_input_state: str,
-        sequence_table_state: list[dict] | None,
-        annotation_column_choice_state: str,
+        edit: dict,
+        view: dict,
+        annotations: dict,
+        homology_colors: dict,
     ) -> tuple[Figure | dict, None, bool]:
         """
-        Master callback function for generating and modifying the alignment plot.
+        Dispatch user actions that create or modify the alignment plot.
 
-        This function coordinates user interactions accross multiple tabs:
-        - In the **Main** tab, it triggers the BLASTn alignments and generates the plot.
-        - In the **Edit** tab, it enables trace selection and color modifications.
-        - In the **View** tab, it updates gene/sequence annotations, scale bar visibility,
-          alignment position, and homology filtering.
+        This callback is the main controller for interactions with the HomologyViz
+        alignment figure. It determines which input triggered the callback using
+        ``dash.ctx.triggered_id`` and delegates the requested operation to the
+        appropriate handler.
 
-        The function also resets the plot when the user clicks the "Erase" button.
+        Supported actions include generating and erasing the plot, updating the
+        plot view, changing homology and gene colors, editing the title, applying
+        sequence and gene annotations, and selecting traces from the figure.
 
         Parameters
         ----------
-        plot_button_clicks : int | None
-            Number of times the "Plot" button has been clicked.
-        clear_button_clicks : int | None
-            Number of times the "Erase" button has been clicked.
-        click_data : dict | None
-            Data from clicking a trace on the plot (used for selecting/deselecting
-            traces).
-        change_homology_color_button_clicks : int | None
-            Click count for the button that changes homology colors and legend.
-        change_gene_color_button_clicks : int | None
-            Click count for the button that updates selected gene trace colors.
-        update_annotations_clicks : int | None
-            Click count for the button that updates annotations and plot layout.
-        update_title_button_clicks : int | None
-            Click count for the button that updates the figure's title.
-        update_sequence_annotations : int | None
-            Click count for the button that updates DNA sequence annotations.
-        update_gene_annotations : int | None
-            Click count for the button that updates gene annotations.
-        virtual : list[dict[str, str]] | None
-            Virtual row data from the GenBank file upload table.
+        _actions : dict
+            Grouped button inputs that trigger plot-related actions. Their click
+            counts are not used directly; the triggering component is identified
+            with ``dash.ctx.triggered_id``.
+        click_data : dict or None
+            Data generated when the user clicks a trace in the Plotly figure.
+            Used for trace selection when selection mode is active.
+        virtual : list[dict[str, str]]
+            Current virtual rows of the uploaded-files table, including the files
+            used to generate the alignment plot.
         active_tab : str
-            The currently active tab in the UI (e.g., "tab-main", "tab-edit", "tab-view").
+            Identifier of the currently active application tab.
         figure_state : dict
-            The current figure state stored in Dash, used to rebuild or modify the plot.
-        color_input_state : str
-            Color selected for updating gene trace colors (hex string).
-        select_items_state : bool
-            Whether the "Select Items" button is active for toggling trace selection.
-        color_scale_state : str
-            The selected colorscale name used for identity-based homology coloring.
-        range_slider_state : list[int, int]
-            The selected range of identity percentages used for color scaling.
-        align_plot_state : str
-            Alignment layout setting (e.g., "left", "center", "right").
-        homology_style_state : str
-            Whether the style of homology connections are straight or curve (Bezier).
-        minimum_homology_length_state : int
-            Minimum homology length (in bp) to display in the plot.
-        is_set_to_extreme_homologies : bool
-            Whether to stretch the color scale to the dataset min/max identity values.
-        annotate_genes_state : str
-            Whether and where to annotate gene features (e.g., "top", "bottom", "no").
-        scale_bar_state : str
-            Whether to show the scale bar ("yes" or "no").
-        use_genes_info_from_state : str
-            Source of gene labels used for annotation (e.g., "CDS product", "CDS gene").
+            Current serialized state of the Plotly alignment figure.
         title_input_state : str
-            String holding the figure's title.
-        sequence_table_state : list[dict[str, str, str, str, str]] | None
-            Table from 'Edit Sequence Annotations' with the following columns: File,
-            Accession, Record Name, File name, and Custom name.
-        annotation_column_choice_state : str
-            Whether and how to annotate DNA sequences (e.g., "accession", "name", "no",
-            "custom").
+            Current value of the figure title input.
+        edit : dict
+            Settings related to interactive editing. Contains the selected color
+            and the current trace-selection state.
+        homology_colors : dict
+            Homology coloring settings, including the colorscale, identity range,
+            and whether the colorscale uses the extreme homology values.
+        view : dict
+            Plot display settings, including sequence alignment, homology style,
+            minimum homology length, and scale-bar visibility.
+        annotations : dict
+            Sequence and gene annotation settings and their editable table data.
 
         Returns
         -------
-        fig : plotly.graph_objects.Figure
-            The updated Plotly figure, either newly created or modified.
-        None
-            Placeholder to reset `clickData` in Dash (prevents stuck selections).
-        bool
-            A flag (`False`) to hide the dmc.Skeleton loading component after plot
-            rendering.
+        tuple[Figure | dict, None, bool]
+            The updated Plotly figure (or serialized figure state), ``None`` to
+            clear ``clickData``, and ``False`` to hide the plot skeleton loader.
 
         Notes
         -----
-        - Uses `dash.callback_context` to determine which button triggered the callback.
-        - This function is central to all updates affecting the alignment plot.
+        The callback primarily acts as a dispatcher. Plot generation and editing
+        operations are delegated to dedicated handler functions rather than being
+        implemented directly in this callback.
         """
         # Use context to find the button that triggered the callback.
         button_id = dash.callback_context.triggered_id
-        print(f"button_id: {button_id}")
 
-        # = TAB MAIN =================================================================== #
-        # Perform Alignments & Plot
         if (button_id == "plot-button") and virtual:
-            print("Plot button clicked, starting alignment and plotting...")
             return handle_plot_button_click(
                 dash_parameters=dash_parameters,
                 virtual=virtual,
                 tmp_directory_path=tmp_directory,
-                align_plot_state=align_plot_state,
-                color_scale_state=color_scale_state,
-                range_slider_state=range_slider_state,
-                is_set_to_extreme_homologies=is_set_to_extreme_homologies,
-                annotation_column_choice_state=annotation_column_choice_state,
-                annotate_genes_from_state=gene_annotation_from_state,
-                annotate_genes_positions_state=gene_annotation_positions_state,
-                homology_style_state=homology_style_state,
-                minimum_homology_length_state=minimum_homology_length_state,
-                scale_bar_state=scale_bar_state,
+                align_plot_state=view["align_plot"],
+                color_scale_state=homology_colors["color_scale"],
+                range_slider_state=homology_colors["identity_range"],
+                is_set_to_extreme_homologies=homology_colors["use_extreme"],
+                annotation_column_choice_state=annotations["sequence_column"],
+                annotate_genes_from_state=annotations["gene_from"],
+                annotate_genes_positions_state=annotations["gene_positions"],
+                homology_style_state=view["homology_style"],
+                minimum_homology_length_state=view["minimum_homology_length"],
+                scale_bar_state=view["scale_bar"],
                 title_input_state=title_input_state,
             )
 
-        # Erase Plot & Reset All Parameters
         if button_id == "erase-button":
             dash_parameters.reset()
-            # Return an empty figure, None for clickdata, and False for skeleton
             return {}, None, False
 
-        # = TAB VIEW =================================================================== #
-        # Update Annotations and View
         if button_id == "update-annotations":
             return handle_update_view_click(
                 figure_state=figure_state,
                 dash_parameters=dash_parameters,
-                align_plot_state=align_plot_state,
-                homology_style_state=homology_style_state,
-                scale_bar_state=scale_bar_state,
-                minimum_homology_length_state=minimum_homology_length_state,
+                align_plot_state=view["align_plot"],
+                homology_style_state=view["homology_style"],
+                scale_bar_state=view["scale_bar"],
+                minimum_homology_length_state=view["minimum_homology_length"],
             )
 
-        # = TAB EDIT =================================================================== #
-        # Change Homology Color Regions and Colorscale Bar Legend
         if button_id == "change-homology-color-button":
             return handle_update_homologies_click(
-                figure_state,
-                dash_parameters,
-                color_scale_state,
-                range_slider_state,
-                is_set_to_extreme_homologies,
+                figure_state=figure_state,
+                dash_parameters=dash_parameters,
+                color_scale_state=homology_colors["color_scale"],
+                range_slider_state=homology_colors["identity_range"],
+                is_set_to_extreme_homologies=homology_colors["use_extreme"],
             )
 
-        # Insert title to plot
         if button_id == "update-title-button":
             return handle_update_title_click(
                 figure_state=figure_state,
@@ -273,48 +285,39 @@ def register_plot_callbacks(
                 title_input_state=title_input_state,
             )
 
-        # Update sequence annotations
         if button_id == "offcanvas-update-sequence-annotations-button":
-            fig = Figure(data=figure_state["data"], layout=figure_state["layout"])
-            fig = update_dna_sequence_annotations(
-                fig=fig,
+            return handle_sequence_annotations_update(
+                figure_state=figure_state,
                 dash_parameters=dash_parameters,
-                annotation_column_choice_state=annotation_column_choice_state,
-                table=sequence_table_state,
+                annotation_column_choice_state=annotations["sequence_column"],
+                sequence_table_state=annotations["sequence_table"],
             )
-            return fig, None, False
 
-        # Update gene annotations
         if button_id == "offcanvas-update-gene-annotations-button":
-            print("Updating gene annotations based on user preferences...")
-            fig = Figure(data=figure_state["data"], layout=figure_state["layout"])
-            fig = update_genes_annotations(
-                fig=fig,
+            return handle_gene_annotations_update(
+                figure_state=figure_state,
                 dash_parameters=dash_parameters,
-                annotate_genes_from_state=gene_annotation_from_state,
-                annotate_genes_positions_state=gene_annotation_positions_state,
-                table=gene_table_state,
+                gene_annotation_from_state=annotations["gene_from"],
+                gene_annotation_positions_state=annotations["gene_positions"],
+                gene_table_state=annotations["gene_table"],
             )
-            return fig, None, False
 
-        # Change Color of Selected Traces
         if button_id == "change-gene-color-button":
             return handle_change_color_click(
-                figure_state,
-                dash_parameters,
-                color_input_state,
+                figure_state=figure_state,
+                dash_parameters=dash_parameters,
+                color_input_state=edit["color"],
             )
 
-        # Select Traces for Changing Color
         if (
             (active_tab == "tab-edit")
             and (click_data is not None)
-            and select_items_state
+            and edit["select_item"]
         ):
             return handle_select_traces_click(
-                figure_state,
-                dash_parameters,
-                click_data,
+                figure_state=figure_state,
+                dash_parameters=dash_parameters,
+                click_data=click_data,
             )
 
         return figure_state, None, False
