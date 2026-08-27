@@ -335,12 +335,16 @@ def parse_genbank_cds_to_df(
     for feature in record.features:
         if feature.type != "CDS":
             continue
+
         data["file_number"].append(file_number)
         data["cds_number"].append(counter)
         counter += 1
+
         data["accession"].append(accession)
+
         # Add an empty string to custom name for future manipulation in the GUI
         data["custom_name"].append("")
+
         if gene := feature.qualifiers.get("gene", None):
             data["gene"].append(gene[0])
         else:
@@ -349,31 +353,34 @@ def parse_genbank_cds_to_df(
             data["product"].append(product[0])
         else:
             data["product"].append(None)
+
         # TODO: allow user to provide "color", "Color", or "COLOR"
         if feature.qualifiers.get("Color", None):
             data["color"].append(feature.qualifiers["Color"][0])
         else:
             data["color"].append("#ffff00")  # Make yellow default color
-        # Some CDS are composed of more than one parts, like introns, or,
-        # in the case of some bacteria, some genes have frameshifts as a
-        # regulatory function (some transposase genes have frameshifts as
-        # a regulatory function).
-        for part in feature.location.parts:
-            strand = part._strand
-            data["strand"].append(strand)
-            if strand == -1:
-                data["start"].append(float(part._end))
-                data["start_plot"].append(float(part._end))
-                data["end"].append(float(part._start + 1))
-                data["end_plot"].append(float(part._start + 1))
-            else:
-                data["start"].append(float(part._start + 1))
-                data["start_plot"].append(float(part._start + 1))
-                data["end"].append(float(part._end))
-                data["end_plot"].append(float(part._end))
+
+        # Treat each CDS feature as one DataFrame row, including CDSs represented by
+        # compound locations such as join(...).
+        location = feature.location
+        strand = location.strand
+
+        data["strand"].append(strand)
+
+        if strand == -1:
+            start = float(location.end)
+            end = float(location.start + 1)
+        else:
+            start = float(location.start + 1)
+            end = float(location.end)
+
+        data["start"].append(start)
+        data["start_plot"].append(start)
+        data["end"].append(end)
+        data["end_plot"].append(end)
+
     # Create DataFrame
-    df = DataFrame(data, columns=headers)
-    return df
+    return DataFrame(data, columns=headers)
 
 
 def get_blast_metadata(
