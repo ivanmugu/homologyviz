@@ -20,6 +20,7 @@ Notes
 """
 
 from pathlib import Path
+from typing import Literal
 from pandas import DataFrame
 
 import plotly.graph_objects as go
@@ -428,6 +429,7 @@ def plot_dna_sequences(
     fig: Figure,
     gb_records: DataFrame,
     y_separation: int = 10,
+    position: Literal["left", "center", "right"] = "left",
 ) -> Figure:
     """
     Plot horizontal lines representing DNA sequences using metadata from a DataFrame.
@@ -442,21 +444,32 @@ def plot_dna_sequences(
         The Plotly figure to which the sequence lines will be added.
     gb_records : pandas.DataFrame
         A DataFrame containing metadata for each sequence, including:
-        - 'sequence_start'
-        - 'sequence_end'
+        - 'sequence_start_plot_*'
+        - 'sequence_end_plot_*'
         - 'record_name'
     y_separation : int, default=10
         The vertical distance between stacked sequence lines.
+    position : str, default="left"
+        Determines the alignment of the sequence lines on the x-axis. Options are:
+        - "left": Align sequences to the left.
+        - "center": Center sequences horizontally.
+        - "right": Align sequences to the right.
 
     Returns
     -------
     fig : plotly.graph_objects.Figure
         The updated Plotly figure with all DNA sequences plotted as horizontal lines.
     """
+    if position not in ("left", "center", "right"):
+        raise ValueError(
+            f"Invalid position '{position}'. Must be 'left', 'center', or 'right'."
+        )
+
     y_distance = len(gb_records) * y_separation
+
     for _, row in gb_records.iterrows():
-        x1 = row["sequence_start"]
-        x2 = row["sequence_end"]
+        x1 = row[f"sequence_start_plot_{position}"]
+        x2 = row[f"sequence_end_plot_{position}"]
         record_name = row["record_name"]
         x_values = np.array([x1, x2])
         y_values = np.array([y_distance, y_distance])
@@ -468,6 +481,7 @@ def plot_dna_sequences(
             name=trace_name,
         )
         y_distance -= y_separation
+
     return fig
 
 
@@ -478,6 +492,7 @@ def plot_genes(
     cds_records: DataFrame,
     name_from: str = "product",
     y_separation: int = 10,
+    position: Literal["left", "center", "right"] = "left",
 ) -> Figure:
     """
     Plot arrows representing genes using metadata from a CDS DataFrame.
@@ -508,22 +523,34 @@ def plot_genes(
         Determines the label shown for each gene: either "product" or "gene".
     y_separation : int, default=10
         Vertical spacing between rows of gene arrows for different GenBank files.
+    position : str, default="left"
+        Determines the alignment of the homology regions on the x-axis. Options are:
+        - "left": Align regions to the left.
+        - "center": Center regions horizontally.
+        - "right": Align regions to the right.
 
     Returns
     -------
     fig : plotly.graph_objects.Figure
         The updated Plotly figure with gene arrows plotted for each sequence.
     """
+    if position not in ("left", "center", "right"):
+        raise ValueError(
+            f"Invalid position '{position}'. Must be 'left', 'center', or 'right'."
+        )
+
     # Position of the first DNA sequence in the y axis. Plotting starts at the top.
     y = number_gb_records * y_separation
+
     # Ratio head_height vs lenght of longest sequence
     ratio = 0.02
     head_height = longest_sequence * ratio
+
     # Iterate over gb_records dataframe to plot genes.
     for _, cds_group in cds_records.groupby(["file_number"]):
         for _, row in cds_group.iterrows():
-            x1 = row["start_plot"]
-            x2 = row["end_plot"]
+            x1 = row[f"start_plot_{position}"]
+            x2 = row[f"end_plot_{position}"]
             color = row["color"]
             file_number = row["file_number"]
             cds_number = row["cds_number"]
@@ -541,6 +568,7 @@ def plot_genes(
                 customdata=[file_number, cds_number, name, color],
             )
         y -= y_separation
+
     return fig
 
 
@@ -556,6 +584,7 @@ def plot_homology_regions_with_dataframe(
     set_colorscale_to_extreme_homologies: bool = False,
     lowest_homology: None | float = None,
     highest_homology: None | float = None,
+    position: Literal["left", "center", "right"] = "left",
 ) -> Figure:
     """
     Plot homology regions as filled polygons using metadata from alignment dataframes.
@@ -597,34 +626,48 @@ def plot_homology_regions_with_dataframe(
     highest_homology : float or None, optional
         The maximum identity value used for scaling (required if
         `set_colorscale_to_extreme_homologies` is True).
+    position : str, default="left"
+        Determines the alignment of the homology regions on the x-axis. Options are:
+        - "left": Align regions to the left.
+        - "center": Center regions horizontally.
+        - "right": Align regions to the right.
 
     Returns
     -------
     fig : plotly.graph_objects.Figure
         The updated Plotly figure with homology regions plotted as polygons.
     """
+    if position not in ("left", "center", "right"):
+        raise ValueError(
+            f"Invalid position '{position}'. Must be 'left', 'center', or 'right'."
+        )
+
     # Get length of alignments and add 1
     alignments_len = len(alignments_df) + 1
+
     # Get the y distance to start plotting at the top of the graph
     y_distances = (alignments_len) * y_separation
+
     # Iterate over homologous regions for plotting
     for i, region_group in regions_df.groupby(["alignment_number"]):
         for _, row in region_group.iterrows():
             # Get region coordinates
-            x1 = row["query_from_plot"]
-            x2 = row["query_to_plot"]
-            x3 = row["hit_to_plot"]
-            x4 = row["hit_from_plot"]
+            x1 = row[f"query_from_plot_{position}"]
+            x2 = row[f"query_to_plot_{position}"]
+            x3 = row[f"hit_to_plot_{position}"]
+            x4 = row[f"hit_from_plot_{position}"]
             y1 = y_distances - homology_padding
             y2 = y_distances - homology_padding
             y3 = y_distances - y_separation + homology_padding
             y4 = y_distances - y_separation + homology_padding
+
             homology_length = x2 - x1
             # If homology length is less or equalts to the minimun required, ignore it
             if homology_length <= minimum_homology_length:
                 visible = False
             else:
                 visible = True
+
             # If user requested straight lines convert coordinates to np.array
             if straight_heights:
                 xpoints = np.array([x1, x2, x3, x4, x1])
@@ -636,6 +679,7 @@ def plot_homology_regions_with_dataframe(
                     y_coordinates=[y1, y2, y3, y4],
                     proportions=[0, 0.2, 0.8, 1],
                 ).coordinates_rectangle_height_bezier()
+
             # Get the identity to match with the correct color.
             homology = row["homology"]
             # Sample color depending on how the user set the colorscale
@@ -651,6 +695,7 @@ def plot_homology_regions_with_dataframe(
                     truncated_colorscale=colorscale,
                     homology_value=homology,
                 )
+
             customdata = ["identity", homology, homology_length]
             plot_polygon(
                 fig,
@@ -662,6 +707,7 @@ def plot_homology_regions_with_dataframe(
                 visible=visible,
             )
         y_distances -= y_separation
+
     return fig
 
 
@@ -1424,17 +1470,24 @@ def make_alignments(
         - alignment number (to relate to `alignments_df`) and region-level coordinates.
         See `parse_blast_record` in the `gb_files_manipulation` module for details.
     """
+    # Make GenBank records and coding sequences dataframes
+    gb_df, cds_df = genbank.genbank_files_metadata_to_dataframes(input_files)
+    size_longest_sequence = genbank.get_longest_sequence_dataframe(gb_df)
+
     # Create fasta files for BLASTing using the gb files
     faa_files = genbank.make_fasta_files(input_files, output_folder)
     # Run blastn locally to make alignments.
     blast_xml_results = genbank.run_blastn(faa_files, output_folder)
     # Make alignments and regions dataframes from blast results
-    alignments_df, regions_df = genbank.get_blast_metadata(blast_xml_results)
-    # Make GenBank records and coding sequences dataframes
-    gb_df, cds_df = genbank.genbank_files_metadata_to_dataframes(input_files)
+    alignments_df, regions_df = genbank.get_blast_metadata(
+        blast_xml_results,
+        size_longest_sequence,
+    )
+
     # Delete the documents used for genereting BLASTn results.
     misc.delete_files(faa_files)
     misc.delete_files(blast_xml_results)
+
     return gb_df, cds_df, alignments_df, regions_df
 
 
@@ -1468,18 +1521,6 @@ def make_figure(plot_parameters: PlotParameters) -> Figure:
     """
     # TODO: Validate that all required attributes in plot_parameters are set before
     # plotting.
-
-    # Before plotting, check if `alignments_position` option is not selected to the
-    # `left` to adjust the coordinates of the sequences and genes accordingly.
-    if plot_parameters.alignments_position != "left":
-        genbank.adjust_positions_sequences_and_alignments_df_for_plotting(
-            gb_records=plot_parameters.gb_df,
-            cds=plot_parameters.cds_df,
-            alignments=plot_parameters.alignments_df,
-            regions=plot_parameters.alignments_regions_df,
-            size_longest_sequence=plot_parameters.longest_sequence,
-            position=plot_parameters.alignments_position,
-        )
 
     # Create a blank figure
     fig = go.Figure()
@@ -1526,6 +1567,7 @@ def make_figure(plot_parameters: PlotParameters) -> Figure:
         fig=fig,
         gb_records=plot_parameters.gb_df,
         y_separation=plot_parameters.y_separation,
+        position=plot_parameters.alignments_position,
     )
 
     # Plot the homology regions
@@ -1544,6 +1586,7 @@ def make_figure(plot_parameters: PlotParameters) -> Figure:
         set_colorscale_to_extreme_homologies=set_colorscale_to_extreme_homologies,
         lowest_homology=lowest_identity,
         highest_homology=highest_identity,
+        position=plot_parameters.alignments_position,
     )
 
     # Plot genes
@@ -1554,6 +1597,7 @@ def make_figure(plot_parameters: PlotParameters) -> Figure:
         cds_records=plot_parameters.cds_df,
         name_from=plot_parameters.annotate_genes_from,
         y_separation=plot_parameters.y_separation,
+        position=plot_parameters.alignments_position,
     )
     # Annotate genes
     if plot_parameters.annotate_genes_positions != "no":

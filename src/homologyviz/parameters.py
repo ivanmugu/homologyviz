@@ -15,6 +15,7 @@ Notes
 
 from pathlib import Path
 from pandas import DataFrame
+from typing import Literal
 
 
 class PlotParameters:
@@ -113,7 +114,7 @@ class PlotParameters:
         input_files: None | list[Path] = None,
         number_gb_records: None | int = None,
         output_folder: None | Path = None,
-        alignments_position: None | str = None,
+        alignments_position: None | Literal["left", "center", "right"] = None,
         identity_color: None | str = None,
         colorscale_vmin: None | float = None,
         colorscale_vmax: None | float = None,

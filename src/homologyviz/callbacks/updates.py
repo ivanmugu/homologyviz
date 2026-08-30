@@ -96,6 +96,7 @@ def update_homology_regions(
         position.
     """
     print(f"homology style state: {homology_style_state}")
+    print(f"homology style state: {align_plot_state}")
     # Check if user wants to change the plot location and homology style
     if (
         align_plot_state != dash_parameters.alignments_position

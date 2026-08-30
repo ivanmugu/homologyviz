@@ -69,6 +69,7 @@ def make_fasta_files(gb_files: list[Path], output_path: Path) -> list[Path]:
         SeqIO.write(new_record, output_file, "fasta")
         # Append path of fasta file to faa_files list.
         faa_files.append(output_file)
+
     return faa_files
 
 
@@ -110,6 +111,7 @@ def run_blastn(faa_files: list[Path], output_path: Path) -> list[Path]:
         results.append(output_file)
         print(f"BLASTing {faa_files[i]} (query) and {faa_files[i+1]} (subject)\n")
         print(std)
+
     return results
 
 
@@ -211,6 +213,12 @@ def genbank_files_metadata_to_dataframes(
         "length",
         "sequence_start",
         "sequence_end",
+        "sequence_start_plot_left",
+        "sequence_end_plot_left",
+        "sequence_start_plot_center",
+        "sequence_end_plot_center",
+        "sequence_start_plot_right",
+        "sequence_end_plot_right",
     ]
     # Initiate dictionary to store data
     gb_files_data = dict(
@@ -223,6 +231,12 @@ def genbank_files_metadata_to_dataframes(
         length=[],
         sequence_start=[],
         sequence_end=[],
+        sequence_start_plot_left=[],
+        sequence_end_plot_left=[],
+        sequence_start_plot_center=[],
+        sequence_end_plot_center=[],
+        sequence_start_plot_right=[],
+        sequence_end_plot_right=[],
     )
     # Initiate a list of cds DataFrames
     cds_dataframes = []
@@ -247,16 +261,38 @@ def genbank_files_metadata_to_dataframes(
         gb_files_data["length"].append(float(seq_length))
         gb_files_data["sequence_start"].append(0.0)
         gb_files_data["sequence_end"].append(float(seq_length))
+        gb_files_data["sequence_start_plot_left"].append(0.0)
+        gb_files_data["sequence_end_plot_left"].append(float(seq_length))
+
+        # Placeholders for future alignment logic; these will be updated later in the
+        # pipeline
+        gb_files_data["sequence_start_plot_center"].append(None)
+        gb_files_data["sequence_end_plot_center"].append(None)
+        gb_files_data["sequence_start_plot_right"].append(None)
+        gb_files_data["sequence_end_plot_right"].append(None)
 
         # Get a DataFrame from the cds
         cds_dataframes.append(
-            parse_genbank_cds_to_df(record=record, file_number=i, accession=record.id)
+            parse_genbank_cds_to_df(
+                record=record,
+                file_number=i,
+                accession=record.id,
+            )
         )
 
     # Create the GenBank files DataFrame
     gb_df = DataFrame(gb_files_data, columns=headers_gb_files_df)
     # Concatenate the cds_dataframes list into a single DataFrame
     cds_df = pd.concat(cds_dataframes, ignore_index=True)
+
+    gb_df, cds_df = include_coordinates_to_center_align_sequences(
+        gb_records=gb_df,
+        cds=cds_df,
+    )
+    gb_df, cds_df = include_coordinates_to_right_align_sequences(
+        gb_records=gb_df,
+        cds=cds_df,
+    )
 
     return gb_df, cds_df
 
@@ -310,8 +346,12 @@ def parse_genbank_cds_to_df(
         "end",
         "strand",
         "color",
-        "start_plot",
-        "end_plot",
+        "start_plot_left",
+        "end_plot_left",
+        "start_plot_center",
+        "end_plot_center",
+        "start_plot_right",
+        "end_plot_right",
     ]
     # Initiate dictionary to store data
     data = dict(
@@ -325,11 +365,16 @@ def parse_genbank_cds_to_df(
         end=[],
         strand=[],
         color=[],
-        start_plot=[],
-        end_plot=[],
+        start_plot_left=[],
+        end_plot_left=[],
+        start_plot_center=[],
+        end_plot_center=[],
+        start_plot_right=[],
+        end_plot_right=[],
     )
     # Initialize counter to track cds; enumerate will not give continues numbers.
     counter = 0
+
     # Iterate over features to extract data. Make sure that if there is no metadata,
     # then add None.
     for feature in record.features:
@@ -375,16 +420,23 @@ def parse_genbank_cds_to_df(
             end = float(location.end)
 
         data["start"].append(start)
-        data["start_plot"].append(start)
+        data["start_plot_left"].append(start)
         data["end"].append(end)
-        data["end_plot"].append(end)
+        data["end_plot_left"].append(end)
 
-    # Create DataFrame
+        # Placeholders for future alignment logic; these will be updated later in the
+        # pipeline
+        data["start_plot_center"].append(None)
+        data["start_plot_right"].append(None)
+        data["end_plot_center"].append(None)
+        data["end_plot_right"].append(None)
+
     return DataFrame(data, columns=headers)
 
 
 def get_blast_metadata(
     xml_alignment_result: list[Path],
+    size_longest_sequence: int = None,
 ) -> tuple[DataFrame, DataFrame]:
     """
     Parse BLASTn XML result files into structured Pandas DataFrames.
@@ -445,6 +497,24 @@ def get_blast_metadata(
     # Create DataFrame
     alignments_df = DataFrame(data, columns=headers)
     regions_df = pd.concat(regions, ignore_index=True)
+
+    alignments_df, regions_df = include_coordinates_to_center_align_alignments(
+        alignments=alignments_df,
+        regions=regions_df,
+        size_longest_sequence=size_longest_sequence,
+    )
+    alignments_df, regions_df = include_coordinates_to_right_align_alignments(
+        alignments=alignments_df,
+        regions=regions_df,
+        size_longest_sequence=size_longest_sequence,
+    )
+
+    output_folder = Path(
+        "/Users/msp/Documents/coding/python_projects/HomologyViz/data/SW4848_paper"
+    )
+    alignments_df.to_csv(output_folder / "alignments_df.csv", index=False)
+    regions_df.to_csv(output_folder / "regions_df.csv", index=False)
+
     return alignments_df, regions_df
 
 
@@ -486,12 +556,20 @@ def parse_blast_record(blast_record: Record, alignment_number: int) -> DataFrame
         "alignment_number",
         "query_from",
         "query_to",
-        "query_from_plot",
-        "query_to_plot",
+        "query_from_plot_left",
+        "query_to_plot_left",
+        "query_from_plot_center",
+        "query_to_plot_center",
+        "query_from_plot_right",
+        "query_to_plot_right",
         "hit_from",
         "hit_to",
-        "hit_from_plot",
-        "hit_to_plot",
+        "hit_from_plot_left",
+        "hit_to_plot_left",
+        "hit_from_plot_center",
+        "hit_to_plot_center",
+        "hit_from_plot_right",
+        "hit_to_plot_right",
         "identity",
         "positive",
         "align_len",
@@ -501,12 +579,20 @@ def parse_blast_record(blast_record: Record, alignment_number: int) -> DataFrame
         alignment_number=[],
         query_from=[],
         query_to=[],
-        query_from_plot=[],
-        query_to_plot=[],
+        query_from_plot_left=[],
+        query_to_plot_left=[],
+        query_from_plot_center=[],
+        query_to_plot_center=[],
+        query_from_plot_right=[],
+        query_to_plot_right=[],
         hit_from=[],
         hit_to=[],
-        hit_from_plot=[],
-        hit_to_plot=[],
+        hit_from_plot_left=[],
+        hit_to_plot_left=[],
+        hit_from_plot_center=[],
+        hit_to_plot_center=[],
+        hit_from_plot_right=[],
+        hit_to_plot_right=[],
         identity=[],
         positive=[],
         align_len=[],
@@ -516,19 +602,30 @@ def parse_blast_record(blast_record: Record, alignment_number: int) -> DataFrame
         data["alignment_number"].append(alignment_number)
         data["query_from"].append(float(region.query_start))
         data["query_to"].append(float(region.query_end))
-        data["query_from_plot"].append(float(region.query_start))
-        data["query_to_plot"].append(float(region.query_end))
+        data["query_from_plot_left"].append(float(region.query_start))
+        data["query_to_plot_left"].append(float(region.query_end))
         data["hit_from"].append(float(region.sbjct_start))
         data["hit_to"].append(float(region.sbjct_end))
-        data["hit_from_plot"].append(float(region.sbjct_start))
-        data["hit_to_plot"].append(float(region.sbjct_end))
+        data["hit_from_plot_left"].append(float(region.sbjct_start))
+        data["hit_to_plot_left"].append(float(region.sbjct_end))
         data["identity"].append(int(region.identities))
         data["positive"].append(int(region.positives))
         data["align_len"].append(int(region.align_length))
         homology = int(region.identities) / int(region.align_length)
         data["homology"].append(homology)
-    regions_df = pd.DataFrame(data, columns=headers)
-    return regions_df
+
+        # Placeholders for future alignment logic; these will be updated later in the
+        # pipeline
+        data["query_from_plot_center"].append(None)
+        data["query_to_plot_center"].append(None)
+        data["query_from_plot_right"].append(None)
+        data["query_to_plot_right"].append(None)
+        data["hit_from_plot_center"].append(None)
+        data["hit_to_plot_center"].append(None)
+        data["hit_from_plot_right"].append(None)
+        data["hit_to_plot_right"].append(None)
+
+    return DataFrame(data, columns=headers)
 
 
 def get_longest_sequence_dataframe(gb_records: DataFrame) -> int:
@@ -571,43 +668,17 @@ def find_lowest_and_highest_homology_dataframe(regions_df: DataFrame) -> tuple:
     return lowest, highest
 
 
-def adjust_positions_sequences_df_left(gb_records: DataFrame, cds: DataFrame) -> None:
-    """
-    Align all sequences and CDS features to the left (start at 0) for plotting.
-
-    This function updates the `sequence_start` and `sequence_end` columns in the
-    GenBank metadata DataFrame (`gb_records`), and also resets the CDS plotting
-    coordinates (`start_plot`, `end_plot`) to match their original start and end positions.
-
-    Parameters
-    ----------
-    gb_records : pandas.DataFrame
-        DataFrame containing metadata for GenBank sequences. Must include 'length',
-        'sequence_start', and 'sequence_end' columns.
-
-    cds : pandas.DataFrame
-        DataFrame containing CDS feature metadata. Must include 'start', 'end',
-        'start_plot', and 'end_plot' columns.
-    """
-    # Reset the values of gb_records and cds to the left
-    gb_records["sequence_start"] = 0.0
-    gb_records["sequence_end"] = gb_records["length"]
-    cds["start_plot"] = cds["start"]
-    cds["end_plot"] = cds["end"]
-
-
-def adjust_positions_sequences_df_center(
-    gb_records: DataFrame, cds: DataFrame, size_longest_sequence: int
-) -> None:
+def include_coordinates_to_center_align_sequences(
+    gb_records: DataFrame,
+    cds: DataFrame,
+) -> tuple[DataFrame, DataFrame]:
     """
     Adjust plotting coordinates to center-align each sequence and its CDS features.
 
     This function horizontally centers all sequences relative to the longest sequence.
-    It modifies the `sequence_start` and `sequence_end` columns in `gb_records`,
-    and adjusts the `start_plot` and `end_plot` coordinates in `cds`.
-
-    If the sequences are not already left-aligned, they are first reset to the left
-    using `adjust_positions_sequences_df_left`.
+    It appends ``sequence_start_center`` and ``sequence_end_center`` columns to
+    `gb_records`, and ``start_plot_center`` and ``end_plot_center`` columns to `cds`,
+    which represent the adjusted coordinates for plotting.
 
     Parameters
     ----------
@@ -618,38 +689,36 @@ def adjust_positions_sequences_df_center(
     cds : pandas.DataFrame
         DataFrame containing CDS feature metadata. Must include:
         - 'file_number', 'start_plot', and 'end_plot'.
-
-    size_longest_sequence : int
-        Length of the longest sequence in the dataset. Used to compute the centering shift.
     """
-    # Check if sequences are at the left. If not, reset the values to the left
-    if not check_if_sequences_are_at_left(cds):
-        adjust_positions_sequences_df_left(gb_records, cds)
+    size_longest_sequence = get_longest_sequence_dataframe(gb_records)
     # Iterate over gb_records rows to find the shift value
     for i, row in gb_records.iterrows():
         # Get value to shift sequences to the center
         shift = (size_longest_sequence - row["length"]) / 2
         # Change the values of the sequence_start and sequence_end of gb_records
-        gb_records.loc[i, "sequence_start"] = row["sequence_start"] + shift
-        gb_records.loc[i, "sequence_end"] = row["sequence_end"] + shift
+        gb_records.loc[i, "sequence_start_plot_center"] = row["sequence_start"] + shift
+        gb_records.loc[i, "sequence_end_plot_center"] = row["sequence_end"] + shift
         # Change the values of start_plot and end_plot of the cds DataFrame
-        cds.loc[cds["file_number"] == i, "start_plot"] += shift
-        cds.loc[cds["file_number"] == i, "end_plot"] += shift
+        cds.loc[cds["file_number"] == i, "start_plot_center"] = (
+            cds.loc[cds["file_number"] == i, "start"] + shift
+        )
+        cds.loc[cds["file_number"] == i, "end_plot_center"] = (
+            cds.loc[cds["file_number"] == i, "end"] + shift
+        )
+    return gb_records, cds
 
 
-def adjust_positions_sequences_df_right(
-    gb_records: DataFrame, cds: DataFrame, size_longest_sequence: int
-) -> None:
+def include_coordinates_to_right_align_sequences(
+    gb_records: DataFrame,
+    cds: DataFrame,
+) -> tuple[DataFrame, DataFrame]:
     """
     Adjust plotting coordinates to right-align sequences and CDS features.
 
     This function horizontally right-aligns each sequence relative to the longest
-    sequence. It updates the `sequence_start` and `sequence_end` columns in
-    `gb_records`, and adjusts the CDS plotting coordinates (`start_plot`, `end_plot`)
-    in `cds`.
-
-    If the sequences are not already left-aligned, they are reset using
-    `adjust_positions_sequences_df_left`.
+    sequence. It updates the `sequence_start_right` and `sequence_end_right` columns in
+    `gb_records`, and adjusts the CDS plotting coordinates (`start_plot_right`,
+    `end_plot_right`) in `cds`.
 
     Parameters
     ----------
@@ -660,61 +729,40 @@ def adjust_positions_sequences_df_right(
     cds : pandas.DataFrame
         DataFrame containing CDS feature metadata. Must include:
         - 'file_number', 'start_plot', and 'end_plot'.
-
-    size_longest_sequence : int
-        Length of the longest sequence in the dataset. Used to calculate the shift
-        needed to right-align shorter sequences.
     """
-    # Check if sequences are at the left. If not, reset the values to the left
-    if not check_if_sequences_are_at_left(cds):
-        adjust_positions_sequences_df_left(gb_records, cds)
+    size_longest_sequence = get_longest_sequence_dataframe(gb_records)
+
     # Iterate over gb_records rows to find the shift value
     for i, row in gb_records.iterrows():
         # Get value to shift sequences to the center
         shift = size_longest_sequence - row["length"]
         # Change the values of the sequence_start and sequence_end of gb_records
-        gb_records.loc[i, "sequence_start"] += shift
-        gb_records.loc[i, "sequence_end"] += shift
+        gb_records.loc[i, "sequence_start_plot_right"] = row["sequence_start"] + shift
+        gb_records.loc[i, "sequence_end_plot_right"] = row["sequence_end"] + shift
         # Change the values of start_plot and end_plot of the cds DataFrame
-        cds.loc[cds["file_number"] == i, "start_plot"] += shift
-        cds.loc[cds["file_number"] == i, "end_plot"] += shift
+        cds.loc[cds["file_number"] == i, "start_plot_right"] = (
+            cds.loc[cds["file_number"] == i, "start"] + shift
+        )
+        cds.loc[cds["file_number"] == i, "end_plot_right"] = (
+            cds.loc[cds["file_number"] == i, "end"] + shift
+        )
+
+    return gb_records, cds
 
 
-def adjust_positions_alignments_df_left(regions: DataFrame) -> None:
-    """
-    Reset alignment plotting coordinates to their original (left-aligned) positions.
-
-    This function sets the plotting coordinates (`*_plot` columns) of BLAST alignment
-    regions to match their original values from the BLAST output.
-
-    Parameters
-    ----------
-    regions : pandas.DataFrame
-        DataFrame containing BLAST alignment region metadata.
-        Must include the following columns:
-        - 'query_from', 'query_to', 'hit_from', 'hit_to'
-        - 'query_from_plot', 'query_to_plot', 'hit_from_plot', 'hit_to_plot'
-    """
-    # Reset values
-    regions["query_from_plot"] = regions["query_from"]
-    regions["query_to_plot"] = regions["query_to"]
-    regions["hit_from_plot"] = regions["hit_from"]
-    regions["hit_to_plot"] = regions["hit_to"]
-
-
-def adjust_positions_alignments_df_center(
-    alignments: DataFrame, regions: DataFrame, size_longest_sequence: int
-) -> None:
+def include_coordinates_to_center_align_alignments(
+    alignments: DataFrame,
+    regions: DataFrame,
+    size_longest_sequence: int = None,
+) -> tuple[DataFrame, DataFrame]:
     """
     Center-align alignment regions for plotting relative to the longest sequence.
 
     This function adjusts the plotting coordinates of each alignment region to center
-    both the query and hit sequences. It shifts the `*_plot` columns (`query_from_plot`,
-    `query_to_plot`, `hit_from_plot`, `hit_to_plot`) based on the difference between
-    each alignment's sequence length and the longest sequence in the dataset.
-
-    If alignments are not already left-aligned, they are reset using
-    `adjust_positions_alignments_df_left()`.
+    both the query and hit sequences. It shifts the `*_plot` columns
+    (`query_from_plot_center`, `query_to_plot_center`, `hit_from_plot_center`
+    `hit_to_plot_center`) based on the difference between each alignment's sequence length
+    and the longest sequence in the dataset.
 
     Parameters
     ----------
@@ -726,38 +774,40 @@ def adjust_positions_alignments_df_center(
         DataFrame containing BLAST alignment region metadata. Must include:
             - 'alignment_number', 'query_from_plot', 'query_to_plot',
               'hit_from_plot', 'hit_to_plot'.
-
-    size_longest_sequence : int
-        Length of the longest sequence in the dataset. Used to calculate the centering
-        shift.
     """
-    # Check if alignments are at the left. If not, reset the values to the left
-    if not check_if_alignments_are_at_left(regions):
-        adjust_positions_alignments_df_left(regions)
     # Iterate over alignments to find the shift value
     for i, alignment in alignments.iterrows():
         # Find the amount to add to shift the alignments the the center.
         shift_q = (size_longest_sequence - alignment["query_len"]) / 2
         shift_h = (size_longest_sequence - alignment["hit_len"]) / 2
         # Change the values of the regions used for plotting.
-        regions.loc[regions["alignment_number"] == i, "query_from_plot"] += shift_q
-        regions.loc[regions["alignment_number"] == i, "query_to_plot"] += shift_q
-        regions.loc[regions["alignment_number"] == i, "hit_from_plot"] += shift_h
-        regions.loc[regions["alignment_number"] == i, "hit_to_plot"] += shift_h
+        regions.loc[regions["alignment_number"] == i, "query_from_plot_center"] = (
+            regions.loc[regions["alignment_number"] == i, "query_from"] + shift_q
+        )
+        regions.loc[regions["alignment_number"] == i, "query_to_plot_center"] = (
+            regions.loc[regions["alignment_number"] == i, "query_to"] + shift_q
+        )
+        regions.loc[regions["alignment_number"] == i, "hit_from_plot_center"] = (
+            regions.loc[regions["alignment_number"] == i, "hit_from"] + shift_h
+        )
+        regions.loc[regions["alignment_number"] == i, "hit_to_plot_center"] = (
+            regions.loc[regions["alignment_number"] == i, "hit_to"] + shift_h
+        )
+
+    return alignments, regions
 
 
-def adjust_positions_alignments_df_right(
-    alignments: DataFrame, regions: DataFrame, size_longest_sequence: int
-) -> None:
+def include_coordinates_to_right_align_alignments(
+    alignments: DataFrame,
+    regions: DataFrame,
+    size_longest_sequence: int,
+) -> tuple[DataFrame, DataFrame]:
     """
     Right-align alignment regions for plotting relative to the longest sequence.
 
     This function shifts the `*_plot` coordinates (`query_from_plot`, `query_to_plot`,
     `hit_from_plot`, `hit_to_plot`) of each region so that both query and hit
     alignments appear right-aligned in the plot.
-
-    If alignments are not already left-aligned, they are reset using
-    `adjust_positions_alignments_df_left()`.
 
     Parameters
     ----------
@@ -774,131 +824,23 @@ def adjust_positions_alignments_df_right(
         The length of the longest sequence in the dataset. Used to compute the
         right-shift offset for alignment display.
     """
-    # Check if alignments are at the left. If not, reset the values to the left
-    if not check_if_alignments_are_at_left(regions):
-        adjust_positions_alignments_df_left(regions)
     # Iterate over alignments to find the shift value
     for i, alignment in alignments.iterrows():
         # Find the amount to add to shift the alignments the the right.
         delta_query = size_longest_sequence - alignment["query_len"]
         delta_hit = size_longest_sequence - alignment["hit_len"]
         # Change the values fo the regions used for plotting.
-        regions.loc[regions["alignment_number"] == i, "query_from_plot"] += delta_query
-        regions.loc[regions["alignment_number"] == i, "query_to_plot"] += delta_query
-        regions.loc[regions["alignment_number"] == i, "hit_from_plot"] += delta_hit
-        regions.loc[regions["alignment_number"] == i, "hit_to_plot"] += delta_hit
-
-
-def adjust_positions_sequences_and_alignments_df_for_plotting(
-    gb_records: DataFrame,
-    cds: DataFrame,
-    alignments: DataFrame,
-    regions: DataFrame,
-    size_longest_sequence: None | int = None,
-    position: str = "left",
-) -> None:
-    """
-    Adjust plotting coordinates for sequences, CDS features, and alignments.
-
-    This function dispatches layout adjustment functions to shift the positions of
-    sequences, genes (CDS), and alignment regions based on the desired layout:
-    left-, center-, or right-aligned. It modifies the relevant plotting columns
-    (`*_plot`) in-place.
-
-    Parameters
-    ----------
-    gb_records : pandas.DataFrame
-        DataFrame containing metadata for GenBank sequences.
-        Must include 'length', 'sequence_start', 'sequence_end', and 'file_number'.
-
-    cds : pandas.DataFrame
-        DataFrame containing CDS metadata with columns such as 'start', 'end',
-        'start_plot', 'end_plot', and 'file_number'.
-
-    alignments : pandas.DataFrame
-        DataFrame summarizing each alignment. Must include 'alignment_number',
-        'query_len', and 'hit_len'.
-
-    regions : pandas.DataFrame
-        DataFrame describing aligned regions between sequences.
-        Must include 'alignment_number', and the columns:
-        'query_from_plot', 'query_to_plot', 'hit_from_plot', 'hit_to_plot'.
-
-    size_longest_sequence : int or None, optional
-        Length of the longest sequence, used when centering or right-aligning. Not
-        required if `position="left"`.
-
-    position : str, default="left"
-        Layout alignment option for plotting. Must be one of: "left", "center", or "right".
-    """
-    if position == "left":
-        adjust_positions_sequences_df_left(gb_records=gb_records, cds=cds)
-        adjust_positions_alignments_df_left(regions=regions)
-    if position == "center":
-        adjust_positions_sequences_df_center(
-            gb_records=gb_records,
-            cds=cds,
-            size_longest_sequence=size_longest_sequence,
+        regions.loc[regions["alignment_number"] == i, "query_from_plot_right"] = (
+            regions.loc[regions["alignment_number"] == i, "query_from"] + delta_query
         )
-        adjust_positions_alignments_df_center(
-            alignments=alignments,
-            regions=regions,
-            size_longest_sequence=size_longest_sequence,
+        regions.loc[regions["alignment_number"] == i, "query_to_plot_right"] = (
+            regions.loc[regions["alignment_number"] == i, "query_to"] + delta_query
         )
-    if position == "right":
-        adjust_positions_sequences_df_right(
-            gb_records=gb_records,
-            cds=cds,
-            size_longest_sequence=size_longest_sequence,
+        regions.loc[regions["alignment_number"] == i, "hit_from_plot_right"] = (
+            regions.loc[regions["alignment_number"] == i, "hit_from"] + delta_hit
         )
-        adjust_positions_alignments_df_right(
-            alignments=alignments,
-            regions=regions,
-            size_longest_sequence=size_longest_sequence,
+        regions.loc[regions["alignment_number"] == i, "hit_to_plot_right"] = (
+            regions.loc[regions["alignment_number"] == i, "hit_to"] + delta_hit
         )
 
-
-def check_if_alignments_are_at_left(regions: DataFrame) -> bool:
-    """
-    Check whether alignment regions are left-aligned.
-
-    This function compares the plotting start coordinates (`query_from_plot`) with the
-    original BLAST start coordinates (`query_from`). If they match for all rows, the
-    function returns True, indicating that no offset has been applied.
-
-    Parameters
-    ----------
-    regions : pandas.DataFrame
-        DataFrame containing alignment region metadata.
-        Must include the columns 'query_from' and 'query_from_plot'.
-
-    Returns
-    -------
-    bool
-        True if all alignment regions are left-aligned, False otherwise.
-    """
-    left = regions["query_from_plot"].equals(regions["query_from"])
-    return left
-
-
-def check_if_sequences_are_at_left(cds: DataFrame):
-    """
-    Check whether CDS features are left-aligned for plotting.
-
-    This function compares the plotting start positions (`start_plot`) to the original
-    genomic start positions (`start`) for all coding sequences. If all rows match, the
-    sequences are considered left-aligned.
-
-    Parameters
-    ----------
-    cds : pandas.DataFrame
-        DataFrame containing CDS feature metadata.
-        Must include 'start' and 'start_plot' columns.
-
-    Returns
-    -------
-    bool
-        True if all CDS start positions are left-aligned, False otherwise.
-    """
-    left = cds["start_plot"].equals(cds["start"])
-    return left
+    return alignments, regions
