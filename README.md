@@ -92,8 +92,8 @@ You can find the full documentation for **HomologyViz** at:
 ## 👤 Author
 
 Created by Iván Muñoz Gutiérrez, PhD<br>
-University of California, Irvine<br>
-School of Biological Sciences<br>
+Montana State University<br>
+Department of Microbiology & Cell Biology<br>
 Github: [@ivanmugu](https://github.com/ivanmugu)
 
 ---
@@ -113,4 +113,5 @@ BSD 3-Clause License
 
 ## 📝 Notes
 
-I am developing HomologyViz in my free time, so if you find a bug, it may take me some time to fix it. However, I will fix the problems as soon as possible. Also, if you have any suggestions, let me know, and I will try to implement them.
+- I am developing HomologyViz in my free time, so if you find a bug, it may take me some time to fix it. However, I will fix the problems as soon as possible.
+- If you have any suggestions, let me know, and I will try to implement them.
