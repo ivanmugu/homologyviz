@@ -10,6 +10,8 @@ from homologyviz.callbacks.updates import (
     update_scale_bar,
     update_minimum_homology_length,
     change_color_cell_cds_dataframe,
+    update_genes_annotations,
+    update_dna_sequence_annotations,
 )
 
 
@@ -118,6 +120,26 @@ def handle_plot_button_click(
     fig.update_layout(clickmode="event+select")
     print("figure is displayed")
     return fig, None, False
+
+
+def figure_from_state(figure_state: dict) -> Figure:
+    """
+    Rebuild a Plotly Figure from its Dash figure state.
+
+    Parameters
+    ----------
+    figure_state : dict
+        Serialized Plotly figure containing ``data`` and ``layout``.
+
+    Returns
+    -------
+    plotly.graph_objects.Figure
+        Reconstructed Plotly figure.
+    """
+    return Figure(
+        data=figure_state["data"],
+        layout=figure_state["layout"],
+    )
 
 
 def handle_update_homologies_click(
@@ -274,7 +296,8 @@ def handle_update_title_click(
         `False` to hide the dmc.Skeleton loading indicator.
     """
     # Convert figure_state dictionary into a Figure object
-    fig = Figure(data=figure_state["data"], layout=figure_state["layout"])
+    fig = figure_from_state(figure_state)
+
     # If title is the same, do nothing and return
     if title_input_state == dash_parameters.plot_title:
         return fig, None, False
@@ -283,6 +306,42 @@ def handle_update_title_click(
     dash_parameters.plot_title = title_input_state
     fig = plt.add_or_remove_title(fig, title_input_state)
 
+    return fig, None, False
+
+
+def handle_sequence_annotations_update_click(
+    figure_state: dict,
+    dash_parameters: PlotParameters,
+    annotation_column_choice_state: str,
+    sequence_table_state: list[dict] | None,
+) -> tuple[Figure, None, bool]:
+    """Apply sequence annotation edits to the current figure."""
+    fig = figure_from_state(figure_state)
+    fig = update_dna_sequence_annotations(
+        fig=fig,
+        dash_parameters=dash_parameters,
+        annotation_column_choice_state=annotation_column_choice_state,
+        table=sequence_table_state,
+    )
+    return fig, None, False
+
+
+def handle_gene_annotations_update_click(
+    figure_state: dict,
+    dash_parameters: PlotParameters,
+    gene_annotation_from_state: str,
+    gene_annotation_positions_state: str,
+    gene_table_state: list[dict] | None,
+) -> tuple[Figure, None, bool]:
+    """Apply gene annotation edits to the current figure."""
+    fig = figure_from_state(figure_state)
+    fig = update_genes_annotations(
+        fig=fig,
+        dash_parameters=dash_parameters,
+        annotate_genes_from_state=gene_annotation_from_state,
+        annotate_genes_positions_state=gene_annotation_positions_state,
+        table=gene_table_state,
+    )
     return fig, None, False
 
 
