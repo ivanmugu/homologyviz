@@ -58,7 +58,7 @@ HomologyViz is ideal for researchers and students with **little or no coding exp
 You can install HomologyViz using `pip`:
 
 ```bash
-pip install homologyviz
+pip install homologyviz==0.1.54
 ```
 
 Or clone this repository:

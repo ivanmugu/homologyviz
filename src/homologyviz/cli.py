@@ -14,7 +14,7 @@ Notes
 
 import argparse
 from argparse import Namespace
-import pkg_resources
+from importlib.metadata import version
 import sys
 
 from homologyviz.miscellaneous import is_blastn_installed
@@ -57,12 +57,12 @@ def parse_command_line_input() -> Namespace:
     helper.add_argument(
         "-h", "--help", action="help", help="Show this help message and exit."
     )
-    prog_version = pkg_resources.get_distribution("msplotly").version
+    __version__ = version("homologyviz")
     helper.add_argument(
         "-v",
         "--version",
         action="version",
-        version=f"%(prog)s {prog_version}",
+        version=f"%(prog)s {__version__}",
         help="Show program's version number and exit",
     )
 
