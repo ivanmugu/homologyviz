@@ -492,7 +492,10 @@ def get_blast_metadata(
             data["query_len"].append(int(blast_record.query_length))
             data["hit_len"].append(int(blast_record.alignments[0].length))
             regions.append(
-                parse_blast_record(blast_record=blast_record, alignment_number=i)
+                parse_blast_record(
+                    blast_record=blast_record,
+                    alignment_number=i,
+                )
             )
     # Create DataFrame
     alignments_df = DataFrame(data, columns=headers)
@@ -628,46 +631,6 @@ def parse_blast_record(blast_record: Record, alignment_number: int) -> DataFrame
     return DataFrame(data, columns=headers)
 
 
-def get_longest_sequence_dataframe(gb_records: DataFrame) -> int:
-    """
-    Return the length of the longest sequence from the GenBank metadata DataFrame.
-
-    Parameters
-    ----------
-    gb_records : pandas.DataFrame
-        DataFrame containing GenBank metadata. Must include a 'length' column.
-
-    Returns
-    -------
-    int
-        The length (in base pairs) of the longest sequence in the dataset.
-    """
-    longest = gb_records["length"].max()
-    return longest
-
-
-def find_lowest_and_highest_homology_dataframe(regions_df: DataFrame) -> tuple:
-    """
-    Compute the minimum and maximum homology values from the regions DataFrame.
-
-    Parameters
-    ----------
-    regions_df : pandas.DataFrame
-        DataFrame containing homology region metadata. Must include a 'homology' column
-        with float values between 0 and 1.
-
-    Returns
-    -------
-    lowest : float
-        The smallest homology value in `regions_df`.
-    highest : float
-        The largest homology value in `regions_df`.
-    """
-    lowest = regions_df["homology"].min()
-    highest = regions_df["homology"].max()
-    return lowest, highest
-
-
 def include_coordinates_to_center_align_sequences(
     gb_records: DataFrame,
     cds: DataFrame,
@@ -690,7 +653,7 @@ def include_coordinates_to_center_align_sequences(
         DataFrame containing CDS feature metadata. Must include:
         - 'file_number', 'start_plot', and 'end_plot'.
     """
-    size_longest_sequence = get_longest_sequence_dataframe(gb_records)
+    size_longest_sequence = gb_records["length"].max()
     # Iterate over gb_records rows to find the shift value
     for i, row in gb_records.iterrows():
         # Get value to shift sequences to the center
@@ -705,6 +668,7 @@ def include_coordinates_to_center_align_sequences(
         cds.loc[cds["file_number"] == i, "end_plot_center"] = (
             cds.loc[cds["file_number"] == i, "end"] + shift
         )
+
     return gb_records, cds
 
 
@@ -730,7 +694,7 @@ def include_coordinates_to_right_align_sequences(
         DataFrame containing CDS feature metadata. Must include:
         - 'file_number', 'start_plot', and 'end_plot'.
     """
-    size_longest_sequence = get_longest_sequence_dataframe(gb_records)
+    size_longest_sequence = gb_records["length"].max()
 
     # Iterate over gb_records rows to find the shift value
     for i, row in gb_records.iterrows():

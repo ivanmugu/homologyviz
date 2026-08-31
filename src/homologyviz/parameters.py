@@ -126,9 +126,6 @@ class PlotParameters:
         minimum_homology_length: None | int = None,
         add_scale_bar: None | str = None,
         selected_traces: None | list = None,
-        lowest_identity: None | float = None,
-        highest_identity: None | float = None,
-        longest_sequence: None | int = None,
         gb_df: None | DataFrame = None,
         cds_df: None | DataFrame = None,
         alignments_df: None | DataFrame = None,
@@ -152,9 +149,6 @@ class PlotParameters:
         self.minimum_homology_length = minimum_homology_length
         self.add_scale_bar = add_scale_bar
         self.selected_traces = selected_traces
-        self.lowest_identity = lowest_identity
-        self.highest_identity = highest_identity
-        self.longest_sequence = longest_sequence
         self.gb_df = gb_df
         self.cds_df = cds_df
         self.alignments_df = alignments_df
@@ -162,6 +156,30 @@ class PlotParameters:
         self.draw_from_button = draw_from_button
         self.y_separation = y_separation
         self.plot_title = plot_title
+
+    @property
+    def longest_sequence(self) -> int | None:
+        "Return the length of the longest sequence in the plot."
+        if self.gb_df is None or self.gb_df.empty:
+            return None
+
+        return int(self.gb_df["length"].max())
+
+    @property
+    def lowest_identity(self) -> float | None:
+        "Return the lowest identity value in the plot."
+        if self.alignments_regions_df is None or self.alignments_regions_df.empty:
+            return None
+
+        return self.alignments_regions_df["homology"].min()
+
+    @property
+    def highest_identity(self) -> float | None:
+        "Return the highest identity value in the plot."
+        if self.alignments_regions_df is None or self.alignments_regions_df.empty:
+            return None
+
+        return self.alignments_regions_df["homology"].max()
 
     def reset(self):
         """Reset all attributes to their default values."""

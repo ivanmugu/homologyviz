@@ -3,9 +3,6 @@ from pathlib import Path
 from plotly.graph_objects import Figure
 
 from homologyviz.parameters import PlotParameters
-from homologyviz.gb_files_manipulation import (
-    get_longest_sequence_dataframe,
-)
 from homologyviz import plotter as plt
 from homologyviz.callbacks.updates import (
     check_plot_parameters_for_update_homologies,
@@ -86,21 +83,21 @@ def handle_plot_button_click(
     """
     print("clicking plot-button")
     print(f"tmp directory path: {tmp_directory_path}")
-    dash_parameters.draw_from_button = "plot-button"
 
     input_files = [Path(row["filepath"]) for row in virtual]
     dash_parameters.input_files = input_files
     dash_parameters.output_folder = tmp_directory_path
     dash_parameters.number_gb_records = len(input_files)
 
+    # Make alignments
     gb_df, cds_df, alignments_df, regions_df = plt.make_alignments(
-        input_files, tmp_directory_path
+        input_files,
+        tmp_directory_path,
     )
     dash_parameters.gb_df = gb_df
     dash_parameters.cds_df = cds_df
     dash_parameters.alignments_df = alignments_df
     dash_parameters.alignments_regions_df = regions_df
-    dash_parameters.longest_sequence = get_longest_sequence_dataframe(gb_df)
 
     dash_parameters.alignments_position = align_plot_state
     dash_parameters.identity_color = color_scale_state
@@ -382,7 +379,7 @@ def handle_update_view_click(
         A flag (`False`) to indicate that the dmc.Skeleton loading component should be
         hidden.
     """
-    # Update homology connector style and/or positio of the alignment in the figure
+    # Update homology connector style and/or position of the alignment in the figure
     fig = update_homology_regions(
         figure_state=figure_state,
         dash_parameters=dash_parameters,

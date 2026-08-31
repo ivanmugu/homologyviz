@@ -159,20 +159,24 @@ def update_genes_annotations(
         # Remove any gene annotations
         fig = plt.remove_annotations_by_name(fig, "Gene annotation:")
         return fig
+
     # If user wants to add or change gene annotations, update dash_parameters and
-    # re-annotate the figure accordingly. Additionally, update CDS DataFrame.
+    # re-annotate the figure accordingly.
     dash_parameters.annotate_genes_positions = annotate_genes_positions_state
     dash_parameters.annotate_genes_from = annotate_genes_from_state
+
     # Update CDS DataFrame.
     dash_parameters.cds_df = update_cds_df(
         table=table,
         cds_df=dash_parameters.cds_df,
         header=annotate_genes_from_state,
     )
+
     # Remove any gene annotations
     fig = plt.remove_annotations_by_name(fig, "Gene annotation:")
     # Annotate with the new parameter
     fig = plt.annotate_genes(fig, dash_parameters)
+
     return fig
 
 

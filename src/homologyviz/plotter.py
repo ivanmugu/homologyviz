@@ -786,6 +786,7 @@ def annotate_top_genes(
     annotate_genes_with: str,
     number_gb_records: int,
     cds_records: DataFrame,
+    position: Literal["left", "center", "rigth"],
     y_separation: int = 10,
 ) -> Figure:
     """
@@ -807,6 +808,8 @@ def annotate_top_genes(
         A DataFrame containing CDS metadata. Must include the following columns:
         - 'file_number', 'start_plot', 'end_plot',
         - and the column specified by `annotate_genes_with` ('gene' and 'product').
+    position : str
+        Alignment of the plot; e.g, "left", "center", "rigth".
     y_separation : int, default=10
         Vertical spacing between sequence rows; controls annotation height.
 
@@ -820,8 +823,8 @@ def annotate_top_genes(
     y = y_separation * number_gb_records
     # Iterate over rows of file_number 0 to annotate genes
     for _, row in df_file_number_0.iterrows():
-        x_start = row["start_plot"]
-        x_end = row["end_plot"]
+        x_start = row[f"start_plot_{position}"]
+        x_end = row[f"end_plot_{position}"]
         x = (x_start + x_end) / 2
         name = row[annotate_genes_with]
         fig.add_annotation(
@@ -835,6 +838,7 @@ def annotate_top_genes(
             xanchor="center",
             yanchor="bottom",
         )
+
     return fig
 
 
@@ -843,6 +847,7 @@ def annotate_all_genes_above(
     annotate_genes_with: str,
     number_gb_records: int,
     cds_records: DataFrame,
+    position: Literal["left", "center", "rigth"],
     y_separation: int = 10,
 ) -> Figure:
     """
@@ -863,6 +868,8 @@ def annotate_all_genes_above(
         A DataFrame containing CDS metadata. Must include the following columns:
         - 'file_number', 'start_plot', 'end_plot',
         - and the column specified by `annotate_genes_with` ('gene' and 'product').
+    position : str
+        Alignment of the plot; e.g, "left", "center", "rigth".
     y_separation : int, default=10
         Vertical spacing between sequence rows; controls annotation height.
 
@@ -876,8 +883,8 @@ def annotate_all_genes_above(
         # Iterate over rows of file_number matching record number
         df_record = cds_records.loc[cds_records["file_number"] == record]
         for _, row in df_record.iterrows():
-            x_start = row["start_plot"]
-            x_end = row["end_plot"]
+            x_start = row[f"start_plot_{position}"]
+            x_end = row[f"end_plot_{position}"]
             x = (x_start + x_end) / 2
             name = row[annotate_genes_with]
             fig.add_annotation(
@@ -892,6 +899,7 @@ def annotate_all_genes_above(
                 yanchor="bottom",
             )
         y -= y_separation
+
     return fig
 
 
@@ -900,6 +908,7 @@ def annotate_all_genes_below(
     annotate_genes_with: str,
     number_gb_records: int,
     cds_records: DataFrame,
+    position: Literal["left", "center", "right"],
     y_separation: int = 10,
 ) -> Figure:
     """
@@ -920,6 +929,8 @@ def annotate_all_genes_below(
         A DataFrame containing CDS metadata. Must include the following columns:
         - 'file_number', 'start_plot', 'end_plot',
         - and the column specified by `annotate_genes_with` ('gene' and 'product').
+    position : str
+        Alignment of the plot; e.g, "left", "center", "rigth".
     y_separation : int, default=10
         Vertical spacing between sequence rows; controls annotation height.
 
@@ -933,8 +944,8 @@ def annotate_all_genes_below(
         # Iterate over rows of file_number matching record number
         df_record = cds_records.loc[cds_records["file_number"] == record]
         for _, row in df_record.iterrows():
-            x_start = row["start_plot"]
-            x_end = row["end_plot"]
+            x_start = row[f"start_plot_{position}"]
+            x_end = row[f"end_plot_{position}"]
             x = (x_start + x_end) / 2
             name = row[annotate_genes_with]
             fig.add_annotation(
@@ -949,6 +960,7 @@ def annotate_all_genes_below(
                 yanchor="top",
             )
         y -= y_separation
+
     return fig
 
 
@@ -957,6 +969,7 @@ def annotate_bottom_genes(
     annotate_genes_with: str,
     number_gb_records: int,
     cds_records: DataFrame,
+    position: Literal["left", "center", "right"],
     y_separation: int = 10,
 ) -> Figure:
     """
@@ -979,6 +992,8 @@ def annotate_bottom_genes(
         A DataFrame containing CDS metadata. Must include the following columns:
         - 'file_number', 'start_plot', 'end_plot'
         - and the column specified by `annotate_genes_with` ('gene' or 'product').
+    position : str
+        Alignment of the plot; e.g, "left", "center", "rigth".
     y_separation : int, default=10
         Vertical spacing between sequence rows; controls annotation height.
 
@@ -994,8 +1009,8 @@ def annotate_bottom_genes(
     y = y_separation
     # Iterate over rows of file_number 0 to annotate genes
     for _, row in df_file_number_0.iterrows():
-        x_start = row["start_plot"]
-        x_end = row["end_plot"]
+        x_start = row[f"start_plot_{position}"]
+        x_end = row[f"end_plot_{position}"]
         x = (x_start + x_end) / 2
         name = row[annotate_genes_with]
         fig.add_annotation(
@@ -1041,7 +1056,6 @@ def annotate_genes(fig: Figure, plot_parameters: PlotParameters) -> Figure:
         The updated Plotly figure with gene annotations applied according to settings.
     """
     annotate = plot_parameters.annotate_genes_positions
-    print(f"annotate genes positions: {annotate}")
     if annotate == "top" or annotate == "top-bottom":
         fig = annotate_top_genes(
             fig=fig,
@@ -1049,6 +1063,7 @@ def annotate_genes(fig: Figure, plot_parameters: PlotParameters) -> Figure:
             number_gb_records=plot_parameters.number_gb_records,
             cds_records=plot_parameters.cds_df,
             y_separation=plot_parameters.y_separation,
+            position=plot_parameters.alignments_position,
         )
     if annotate == "bottom" or annotate == "top-bottom":
         fig = annotate_bottom_genes(
@@ -1057,6 +1072,7 @@ def annotate_genes(fig: Figure, plot_parameters: PlotParameters) -> Figure:
             number_gb_records=plot_parameters.number_gb_records,
             cds_records=plot_parameters.cds_df,
             y_separation=plot_parameters.y_separation,
+            position=plot_parameters.alignments_position,
         )
     if annotate == "all-above":
         fig = annotate_all_genes_above(
@@ -1065,6 +1081,7 @@ def annotate_genes(fig: Figure, plot_parameters: PlotParameters) -> Figure:
             number_gb_records=plot_parameters.number_gb_records,
             cds_records=plot_parameters.cds_df,
             y_separation=plot_parameters.y_separation,
+            position=plot_parameters.alignments_position,
         )
     if annotate == "all-below":
         fig = annotate_all_genes_below(
@@ -1073,7 +1090,9 @@ def annotate_genes(fig: Figure, plot_parameters: PlotParameters) -> Figure:
             number_gb_records=plot_parameters.number_gb_records,
             cds_records=plot_parameters.cds_df,
             y_separation=plot_parameters.y_separation,
+            position=plot_parameters.alignments_position,
         )
+
     return fig
 
 
@@ -1472,7 +1491,7 @@ def make_alignments(
     """
     # Make GenBank records and coding sequences dataframes
     gb_df, cds_df = genbank.genbank_files_metadata_to_dataframes(input_files)
-    size_longest_sequence = genbank.get_longest_sequence_dataframe(gb_df)
+    size_longest_sequence = gb_df["length"].max()
 
     # Create fasta files for BLASTing using the gb files
     faa_files = genbank.make_fasta_files(input_files, output_folder)
@@ -1541,15 +1560,6 @@ def make_figure(plot_parameters: PlotParameters) -> Figure:
         hovermode="closest",
     )
 
-    # Get lowest and hightest homologies.
-    lowest_identity, highest_identity = (
-        genbank.find_lowest_and_highest_homology_dataframe(
-            plot_parameters.alignments_regions_df
-        )
-    )
-    # Add lowest and highest identities to plot_parameters
-    plot_parameters.lowest_identity = lowest_identity
-    plot_parameters.highest_identity = highest_identity
     # Check if user set the colorscale to extreme homologies
     set_colorscale_to_extreme_homologies = (
         plot_parameters.set_colorscale_to_extreme_homologies
@@ -1584,8 +1594,8 @@ def make_figure(plot_parameters: PlotParameters) -> Figure:
         straight_heights=is_straight,
         minimum_homology_length=plot_parameters.minimum_homology_length,
         set_colorscale_to_extreme_homologies=set_colorscale_to_extreme_homologies,
-        lowest_homology=lowest_identity,
-        highest_homology=highest_identity,
+        lowest_homology=plot_parameters.lowest_identity,
+        highest_homology=plot_parameters.highest_identity,
         position=plot_parameters.alignments_position,
     )
 
@@ -1601,7 +1611,10 @@ def make_figure(plot_parameters: PlotParameters) -> Figure:
     )
     # Annotate genes
     if plot_parameters.annotate_genes_positions != "no":
-        fig = annotate_genes(fig, plot_parameters)
+        fig = annotate_genes(
+            fig,
+            plot_parameters,
+        )
 
     # Annotate DNA sequences
     if plot_parameters.annotate_sequences != "no":
@@ -1624,8 +1637,8 @@ def make_figure(plot_parameters: PlotParameters) -> Figure:
     fig = plot_colorbar_legend(
         fig,
         colorscale,
-        lowest_identity,
-        highest_identity,
+        plot_parameters.lowest_identity,
+        plot_parameters.highest_identity,
         set_colorscale_to_extreme_homologies=set_colorscale_to_extreme_homologies,
     )
 
