@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "homologyviz"
-version = "0.1.54"
+version = "0.1.55"
 authors = [
     { name = "Ivan Munoz-Gutierrez", email = "ivan.munoz.gutierrez@gmail.com" },
 ]
@@ -41,7 +41,7 @@ dependencies = [
     "dash-mantine-components>=0.15,<0.16",
     "kaleido==0.2.1",
     "matplotlib",
-    "plotly>=5.24,<6",
+    "plotly>=5.24,<7",
     "pandas",
 ]
 

@@ -43,7 +43,7 @@ def get_logger(name: str) -> logging.Logger:
     logging.Logger
         A logger instance configured for console output.
     """
-    logger = logging.Logger(name)
+    logger = logging.getLogger(name)
 
     if not logger.handlers:
         logger.setLevel(logging.INFO)
