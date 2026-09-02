@@ -114,7 +114,6 @@ def register_download_callbacks(app: dash.Dash) -> None:
             width=width,
             height=height,
             scale=scale,
-            engine="kaleido",
         )
         return create_download_data(
             content=buffer.getvalue(),
