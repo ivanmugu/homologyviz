@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "homologyviz"
-version = "0.1.55"
+version = "0.1.56"
 authors = [
     { name = "Ivan Munoz-Gutierrez", email = "ivan.munoz.gutierrez@gmail.com" },
 ]
@@ -34,14 +34,14 @@ requires-python = ">=3.11"
 dependencies = [
     "bezier",
     "biopython",
-    "dash>=2.18,<3",
-    "dash-ag-grid>=31.3,<32",
-    "dash-bootstrap-components>=1.6,<2",
+    "dash>=3,<4",
+    "dash-ag-grid>=32,<33",
+    "dash-bootstrap-components>=2,<3",
     "dash-iconify",
-    "dash-mantine-components>=0.15,<0.16",
+    "dash-mantine-components>=1,<2",
     "kaleido==0.2.1",
     "matplotlib",
-    "plotly>=5.24,<7",
+    "plotly>=6,<7",
     "pandas",
 ]
 
