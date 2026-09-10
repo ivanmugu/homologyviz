@@ -109,7 +109,7 @@ def run_blastn(faa_files: list[Path], output_path: Path) -> list[Path]:
         )
         # Append path to xlm results to the result list
         results.append(output_file)
-        print(f"BLASTing {faa_files[i]} (query) and {faa_files[i+1]} (subject)\n")
+        print(f"BLASTing {faa_files[i]} (query) and {faa_files[i + 1]} (subject)\n")
         print(std)
 
     return results

@@ -46,8 +46,8 @@ HomologyViz is ideal for researchers and students with **little or no coding exp
 
 ## ✅ Requirements
 
-- Python 3.11+
-- [`blastn`](https://www.ncbi.nlm.nih.gov/books/NBK569861/) (part of [BLAST+](https://blast.ncbi.nlm.nih.gov/Blast.cgi?PAGE_TYPE=BlastDocs&DOC_TYPE=Download)) must be installed and available in your system `PATH`.
+- Python 3.11 or 3.12
+- [`blastn`](https://www.ncbi.nlm.nih.gov/books/NBK569861/) (part of [BLAST+](https://blast.ncbi.nlm.nih.gov/Blast.cgi?PAGE_TYPE=BlastDocs&DOC_TYPE=Download)) must be installed and available in your system `PATH` for the **Installation Method Two**.
 
 > HomologyViz has been tested in **Google Chrome** on **macOS**, but should work across all modern browsers and platforms.
 
@@ -55,18 +55,23 @@ HomologyViz is ideal for researchers and students with **little or no coding exp
 
 ## 📦 Installation
 
-You can install HomologyViz using `pip`:
+1. Method One -> Using `conda-mamba`:
 
 ```bash
-pip install homologyviz==0.1.54
+conda create -n homologyviz python=3.12 pip
+conda activate homologyviz
+mamba install -c bioconda -c conda-forge blast
+pip install homologyviz
 ```
 
-Or clone this repository:
+2. Method Two -> Directly from `pip`:
 
 ```bash
-git clone https://github.com/yourusername/homologyviz.git
+mkdir homologyviz
 cd homologyviz
-pip install -e .
+python3.12 -m venv venv-hviz
+source venv-hviz/bin/activate
+python -m pip install homologyviz
 ```
 
 ---
@@ -77,6 +82,12 @@ Once installed, launch the app by typing:
 
 ```bash
 homologyviz
+```
+
+or
+
+```bash
+hviz
 ```
 
 ---
