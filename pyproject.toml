@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "homologyviz"
-version = "0.1.59"
+version = "0.1.60"
 authors = [
     { name = "Ivan Munoz-Gutierrez", email = "ivan.munoz.gutierrez@gmail.com" },
 ]
@@ -57,5 +57,8 @@ hviz = "homologyviz.app:main"
 homologyviz = "homologyviz.app:main"
 
 [tool.pytest.ini_options]
+filterwarnings = [
+    "ignore:You may be importing Biopython from inside the source tree.*",
+]
 testpaths = ["tests"]
 addopts = "--cov=homologyviz --cov-report=term-missing -v"

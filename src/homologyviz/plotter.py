@@ -275,11 +275,11 @@ def plot_colorbar_legend(
     if min_value != max_value and set_colorscale_to_extreme_homologies:
         updated_colorscale = colorscale
         tickvals = [min_value, max_value]
-        ticktext = [f"{min_value*100:.2f}%", f"{max_value*100:.2f}%"]
+        ticktext = [f"{min_value * 100:.2f}%", f"{max_value * 100:.2f}%"]
     if min_value != max_value and not set_colorscale_to_extreme_homologies:
         updated_colorscale = get_truncated_colorscale(colorscale, min_value, max_value)
         tickvals = [min_value, max_value]
-        ticktext = [f"{min_value*100:.2f}%", f"{max_value*100:.2f}%"]
+        ticktext = [f"{min_value * 100:.2f}%", f"{max_value * 100:.2f}%"]
     # If min and max values are the same add only one tick value.
     if min_value == max_value:
         updated_colorscale = get_truncated_colorscale(colorscale, min_value, max_value)
@@ -702,7 +702,7 @@ def plot_homology_regions_with_dataframe(
                 xpoints,
                 ypoints,
                 color=color,
-                name=f"Identity: {homology*100:.2f}%",
+                name=f"Identity: {homology * 100:.2f}%",
                 customdata=customdata,
                 visible=visible,
             )

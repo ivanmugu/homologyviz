@@ -27,6 +27,7 @@ import subprocess
 
 import pandas as pd
 from pandas import DataFrame
+from _plotly_utils.basevalidators import ColorValidator
 
 from Bio import SeqIO
 from Bio.Blast import NCBIXML
@@ -297,6 +298,25 @@ def genbank_files_metadata_to_dataframes(
     return gb_df, cds_df
 
 
+def get_color_qualifier(qualifiers: dict) -> str | None:
+    for key, value in qualifiers.items():
+        if key.lower() == "color" and value:
+            return value[0]
+
+    return None
+
+
+def is_valid_color(color: str) -> bool:
+    validator = ColorValidator("color", "homologyviz")
+
+    try:
+        validator.validate_coerce(color)
+    except ValueError:
+        return False
+
+    return True
+
+
 def parse_genbank_cds_to_df(
     record: SeqRecord, file_number: int, accession: str
 ) -> DataFrame:
@@ -331,7 +351,8 @@ def parse_genbank_cds_to_df(
 
     Notes
     -----
-    - Each part of a multi-segment CDS is treated as a separate row.
+    - Compound CDS locations are treated as a single CDS feature and represented
+      by one row using the outermost coordinates of the full location.
     - Start/end coordinates are stored as floats for consistency with plotting tools.
     """
     # DataFrame headers
@@ -399,11 +420,13 @@ def parse_genbank_cds_to_df(
         else:
             data["product"].append(None)
 
-        # TODO: allow user to provide "color", "Color", or "COLOR"
-        if feature.qualifiers.get("Color", None):
-            data["color"].append(feature.qualifiers["Color"][0])
+        # CDS color obtained from a case-insensitive `color` qualifier.
+        # Invalid or missing colors default to yellow (#ffff00).
+        color = get_color_qualifier(feature.qualifiers)
+        if color is not None and is_valid_color(color):
+            data["color"].append(color)
         else:
-            data["color"].append("#ffff00")  # Make yellow default color
+            data["color"].append("#ffff00")
 
         # Treat each CDS feature as one DataFrame row, including CDSs represented by
         # compound locations such as join(...).
@@ -436,7 +459,7 @@ def parse_genbank_cds_to_df(
 
 def get_blast_metadata(
     xml_alignment_result: list[Path],
-    size_longest_sequence: int = None,
+    size_longest_sequence: int,
 ) -> tuple[DataFrame, DataFrame]:
     """
     Parse BLASTn XML result files into structured Pandas DataFrames.
@@ -450,6 +473,9 @@ def get_blast_metadata(
     ----------
     xml_alignment_result : list of pathlib.Path
         List of paths to XML-formatted BLASTn result files (outfmt=5).
+    size_longest_sequence : int
+        Length of the longest sequence in the alignment set. Used to calculate plotting
+        coordinates for center- and right-aligned sequences.
 
     Returns
     -------
@@ -512,48 +538,68 @@ def get_blast_metadata(
         size_longest_sequence=size_longest_sequence,
     )
 
-    output_folder = Path(
-        "/Users/msp/Documents/coding/python_projects/HomologyViz/data/SW4848_paper"
-    )
-    alignments_df.to_csv(output_folder / "alignments_df.csv", index=False)
-    regions_df.to_csv(output_folder / "regions_df.csv", index=False)
-
     return alignments_df, regions_df
 
 
 def parse_blast_record(blast_record: Record, alignment_number: int) -> DataFrame:
     """
-    Parse a BLAST record and extract metadata for all matching regions (HSPs).
+    Parse HSP metadata from a pairwise BLAST record.
 
-    This function processes the first alignment in a BLAST record and extracts key
-    information about each high-scoring pair (HSP), including coordinate ranges,
-    identity metrics, and computed homology. It returns a DataFrame with one row
-    per region, ready for downstream plotting or filtering.
+    This function extracts coordinate and similarity information for each high-scoring
+    pair (HSP) associated with the first BLAST hit in the record. In HomologyViz, each
+    BLAST record represents a pairwise comparison between two adjacent sequences in the user-defined sequence order.
+
+    Raw BLAST coordinates are preserved, and plotting coordinates are initialized for
+    left-aligned visualization. Center- and right-aligned plotting coordinates are left
+    empty for later calculation.
 
     Parameters
     ----------
     blast_record : Bio.Blast.Record
-        A parsed BLAST record object from Bio.Blast.NCBIXML.read().
-        Must contain at least one alignment with HSPs.
+        Parsed BLAST record produced by ``Bio.Blast.NCBIXML.read``. The record must
+        contain at least one alignment.
     alignment_number : int
-        Unique index for this alignment, used to link with the summary DataFrame.
+        Identifier assigned to the alignment. The same value is stored for every HSP
+        extracted from the record. This number is used to link the HSPs to their parent
+        alignment in a relational DataFrame.
 
     Returns
     -------
     pandas.DataFrame
-        DataFrame where each row represents a BLAST high-scoring pair (HSP).
-        Includes both raw start/end coordinates and pre-scaled values for plotting.
+        One row per HSP from the first BLAST alignment, with the following
+        columns:
 
-        Columns:
-        - alignment_number : int
-        - query_from, query_to : float
-        - query_from_plot, query_to_plot : float
-        - hit_from, hit_to : float
-        - hit_from_plot, hit_to_plot : float
-        - identity : int (number of identical matches)
-        - positive : int (number of positive-scoring matches)
-        - align_len : int (alignment length)
-        - homology : float (identity / alignment length)
+        alignment_number : int
+            Identifier linking each HSP to its parent alignment.
+        query_from, query_to : float
+            Start and end coordinates of the HSP in the query sequence.
+        hit_from, hit_to : float
+            Start and end coordinates of the HSP in the subject sequence.
+        query_from_plot_left, query_to_plot_left : float
+            Query plotting coordinates for left-aligned visualization.
+        hit_from_plot_left, hit_to_plot_left : float
+            Subject plotting coordinates for left-aligned visualization.
+        query_from_plot_center, query_to_plot_center : float or None
+            Query plotting coordinates for center alignment. Initialized as
+            missing and calculated later in the pipeline.
+        hit_from_plot_center, hit_to_plot_center : float or None
+            Subject plotting coordinates for center alignment. Initialized as
+            missing and calculated later in the pipeline.
+        query_from_plot_right, query_to_plot_right : float or None
+            Query plotting coordinates for right alignment. Initialized as
+            missing and calculated later in the pipeline.
+        hit_from_plot_right, hit_to_plot_right : float or None
+            Subject plotting coordinates for right alignment. Initialized as
+            missing and calculated later in the pipeline.
+        identity : int
+            Number of identical positions in the HSP.
+        positive : int
+            Number of positive-scoring positions in the HSP.
+        align_len : int
+            Length of the HSP alignment.
+        homology : float
+            Fraction of identical positions, calculated as
+            ``identity / align_len``.
     """
     headers = [
         "alignment_number",
@@ -636,38 +682,42 @@ def include_coordinates_to_center_align_sequences(
     cds: DataFrame,
 ) -> tuple[DataFrame, DataFrame]:
     """
-    Adjust plotting coordinates to center-align each sequence and its CDS features.
+    Center-align sequences and their CDS features for plotting.
 
-    This function horizontally centers all sequences relative to the longest sequence.
-    It appends ``sequence_start_center`` and ``sequence_end_center`` columns to
-    `gb_records`, and ``start_plot_center`` and ``end_plot_center`` columns to `cds`,
-    which represent the adjusted coordinates for plotting.
+    Each sequence is shifted horizontally relative to the longest sequence so that
+    all sequences are centered on the same plotting range. The same shift is
+    applied to every CDS belonging to that sequence.
 
     Parameters
     ----------
     gb_records : pandas.DataFrame
-        DataFrame containing metadata for GenBank sequences. Must include:
-        - 'length', 'sequence_start', 'sequence_end', and 'file_number'.
-
+        Sequence metadata. Must contain ``file_number``, ``length``,
+        ``sequence_start``, and ``sequence_end``.
     cds : pandas.DataFrame
-        DataFrame containing CDS feature metadata. Must include:
-        - 'file_number', 'start_plot', and 'end_plot'.
+        CDS metadata. Must contain ``file_number``, ``start``, and ``end``.
+
+    Returns
+    -------
+    tuple[pandas.DataFrame, pandas.DataFrame]
+        Updated sequence and CDS DataFrames. Sequence coordinates are stored in
+        ``sequence_start_plot_center`` and ``sequence_end_plot_center``. CDS
+        coordinates are stored in ``start_plot_center`` and ``end_plot_center``.
     """
     size_longest_sequence = gb_records["length"].max()
     # Iterate over gb_records rows to find the shift value
     for i, row in gb_records.iterrows():
         # Get value to shift sequences to the center
         shift = (size_longest_sequence - row["length"]) / 2
+        file_number = row["file_number"]
+        cds_mask = cds["file_number"] == file_number
+
         # Change the values of the sequence_start and sequence_end of gb_records
         gb_records.loc[i, "sequence_start_plot_center"] = row["sequence_start"] + shift
         gb_records.loc[i, "sequence_end_plot_center"] = row["sequence_end"] + shift
+
         # Change the values of start_plot and end_plot of the cds DataFrame
-        cds.loc[cds["file_number"] == i, "start_plot_center"] = (
-            cds.loc[cds["file_number"] == i, "start"] + shift
-        )
-        cds.loc[cds["file_number"] == i, "end_plot_center"] = (
-            cds.loc[cds["file_number"] == i, "end"] + shift
-        )
+        cds.loc[cds_mask, "start_plot_center"] = cds.loc[cds_mask, "start"] + shift
+        cds.loc[cds_mask, "end_plot_center"] = cds.loc[cds_mask, "end"] + shift
 
     return gb_records, cds
 
@@ -677,22 +727,26 @@ def include_coordinates_to_right_align_sequences(
     cds: DataFrame,
 ) -> tuple[DataFrame, DataFrame]:
     """
-    Adjust plotting coordinates to right-align sequences and CDS features.
+    Right-align sequences and their CDS features for plotting.
 
-    This function horizontally right-aligns each sequence relative to the longest
-    sequence. It updates the `sequence_start_right` and `sequence_end_right` columns in
-    `gb_records`, and adjusts the CDS plotting coordinates (`start_plot_right`,
-    `end_plot_right`) in `cds`.
+    Each sequence is shifted horizontally relative to the longest sequence so that
+    all sequences share the same right boundary. The same shift is applied to
+    every CDS belonging to that sequence.
 
     Parameters
     ----------
     gb_records : pandas.DataFrame
-        DataFrame containing GenBank sequence metadata. Must include:
-        - 'length', 'sequence_start', 'sequence_end', and 'file_number'.
-
+        Sequence metadata. Must contain ``file_number``, ``length``,
+        ``sequence_start``, and ``sequence_end``.
     cds : pandas.DataFrame
-        DataFrame containing CDS feature metadata. Must include:
-        - 'file_number', 'start_plot', and 'end_plot'.
+    CDS metadata. Must contain ``file_number``, ``start``, and ``end``.
+
+    Returns
+    -------
+    tuple[pandas.DataFrame, pandas.DataFrame]
+        Updated sequence and CDS DataFrames. Sequence coordinates are stored in
+        ``sequence_start_plot_right`` and ``sequence_end_plot_right``. CDS
+        coordinates are stored in ``start_plot_right`` and ``end_plot_right``.
     """
     size_longest_sequence = gb_records["length"].max()
 
@@ -700,16 +754,16 @@ def include_coordinates_to_right_align_sequences(
     for i, row in gb_records.iterrows():
         # Get value to shift sequences to the center
         shift = size_longest_sequence - row["length"]
+        file_number = row["file_number"]
+        cds_mask = cds["file_number"] == file_number
+
         # Change the values of the sequence_start and sequence_end of gb_records
         gb_records.loc[i, "sequence_start_plot_right"] = row["sequence_start"] + shift
         gb_records.loc[i, "sequence_end_plot_right"] = row["sequence_end"] + shift
+
         # Change the values of start_plot and end_plot of the cds DataFrame
-        cds.loc[cds["file_number"] == i, "start_plot_right"] = (
-            cds.loc[cds["file_number"] == i, "start"] + shift
-        )
-        cds.loc[cds["file_number"] == i, "end_plot_right"] = (
-            cds.loc[cds["file_number"] == i, "end"] + shift
-        )
+        cds.loc[cds_mask, "start_plot_right"] = cds.loc[cds_mask, "start"] + shift
+        cds.loc[cds_mask, "end_plot_right"] = cds.loc[cds_mask, "end"] + shift
 
     return gb_records, cds
 
@@ -717,45 +771,55 @@ def include_coordinates_to_right_align_sequences(
 def include_coordinates_to_center_align_alignments(
     alignments: DataFrame,
     regions: DataFrame,
-    size_longest_sequence: int = None,
+    size_longest_sequence: int,
 ) -> tuple[DataFrame, DataFrame]:
     """
-    Center-align alignment regions for plotting relative to the longest sequence.
+    Center-align BLAST alignment regions for plotting.
 
-    This function adjusts the plotting coordinates of each alignment region to center
-    both the query and hit sequences. It shifts the `*_plot` columns
-    (`query_from_plot_center`, `query_to_plot_center`, `hit_from_plot_center`
-    `hit_to_plot_center`) based on the difference between each alignment's sequence length
-    and the longest sequence in the dataset.
+    For each alignment, this function independently shifts the query and hit
+    coordinates relative to the longest sequence so that both sequences are
+    centered within the same plotting range. The calculated shifts are applied
+    to all HSP regions associated with the alignment.
 
     Parameters
     ----------
     alignments : pandas.DataFrame
-        DataFrame containing BLAST alignment summary metadata. Must include:
-            - 'alignment_number', 'query_len', 'hit_len'.
-
+        BLAST alignment summary metadata. Must contain ``alignment_number``,
+        ``query_len``, and ``hit_len``.
     regions : pandas.DataFrame
-        DataFrame containing BLAST alignment region metadata. Must include:
-            - 'alignment_number', 'query_from_plot', 'query_to_plot',
-              'hit_from_plot', 'hit_to_plot'.
+        BLAST HSP metadata. Must contain ``alignment_number``, ``query_from``,
+        ``query_to``, ``hit_from``, and ``hit_to``.
+    size_longest_sequence : int
+        Length of the longest sequence in the sequence set. Used as the common
+        plotting width for calculating the query and hit shifts.
+
+    Returns
+    -------
+    tuple[pandas.DataFrame, pandas.DataFrame]
+        Updated alignment and region DataFrames. Center-aligned HSP coordinates
+        are stored in ``query_from_plot_center``, ``query_to_plot_center``,
+        ``hit_from_plot_center``, and ``hit_to_plot_center``.
     """
     # Iterate over alignments to find the shift value
-    for i, alignment in alignments.iterrows():
-        # Find the amount to add to shift the alignments the the center.
+    for _, alignment in alignments.iterrows():
+        # Find the amount to add to shift the alignments to the center.
         shift_q = (size_longest_sequence - alignment["query_len"]) / 2
         shift_h = (size_longest_sequence - alignment["hit_len"]) / 2
+        alignment_number = alignment["alignment_number"]
+        alignment_mask = regions["alignment_number"] == alignment_number
+
         # Change the values of the regions used for plotting.
-        regions.loc[regions["alignment_number"] == i, "query_from_plot_center"] = (
-            regions.loc[regions["alignment_number"] == i, "query_from"] + shift_q
+        regions.loc[alignment_mask, "query_from_plot_center"] = (
+            regions.loc[alignment_mask, "query_from"] + shift_q
         )
-        regions.loc[regions["alignment_number"] == i, "query_to_plot_center"] = (
-            regions.loc[regions["alignment_number"] == i, "query_to"] + shift_q
+        regions.loc[alignment_mask, "query_to_plot_center"] = (
+            regions.loc[alignment_mask, "query_to"] + shift_q
         )
-        regions.loc[regions["alignment_number"] == i, "hit_from_plot_center"] = (
-            regions.loc[regions["alignment_number"] == i, "hit_from"] + shift_h
+        regions.loc[alignment_mask, "hit_from_plot_center"] = (
+            regions.loc[alignment_mask, "hit_from"] + shift_h
         )
-        regions.loc[regions["alignment_number"] == i, "hit_to_plot_center"] = (
-            regions.loc[regions["alignment_number"] == i, "hit_to"] + shift_h
+        regions.loc[alignment_mask, "hit_to_plot_center"] = (
+            regions.loc[alignment_mask, "hit_to"] + shift_h
         )
 
     return alignments, regions
@@ -767,44 +831,82 @@ def include_coordinates_to_right_align_alignments(
     size_longest_sequence: int,
 ) -> tuple[DataFrame, DataFrame]:
     """
-    Right-align alignment regions for plotting relative to the longest sequence.
+    Right-align BLAST alignment regions for plotting.
 
-    This function shifts the `*_plot` coordinates (`query_from_plot`, `query_to_plot`,
-    `hit_from_plot`, `hit_to_plot`) of each region so that both query and hit
-    alignments appear right-aligned in the plot.
+    For each alignment, this function independently shifts the query and hit
+    coordinates relative to the longest sequence so that both sequences share
+    the same right plotting boundary. The calculated shifts are applied to all
+    HSP regions associated with the alignment.
 
     Parameters
     ----------
     alignments : pandas.DataFrame
-        DataFrame containing summary metadata for each alignment. Must include:
-            - 'alignment_number', 'query_len', and 'hit_len'.
-
+        BLAST alignment summary metadata. Must contain ``alignment_number``,
+        ``query_len``, and ``hit_len``.
     regions : pandas.DataFrame
-        DataFrame with alignment region metadata. Must include:
-            - 'alignment_number', 'query_from_plot', 'query_to_plot',
-              'hit_from_plot', and 'hit_to_plot'.
-
+        BLAST HSP metadata. Must contain ``alignment_number``, ``query_from``,
+        ``query_to``, ``hit_from``, and ``hit_to``.
     size_longest_sequence : int
-        The length of the longest sequence in the dataset. Used to compute the
-        right-shift offset for alignment display.
+        Length of the longest sequence in the sequence set. Used as the common
+        plotting width for calculating the query and hit shifts.
+
+    Returns
+    -------
+    tuple[pandas.DataFrame, pandas.DataFrame]
+        Updated alignment and region DataFrames. Right-aligned HSP coordinates
+        are stored in ``query_from_plot_right``, ``query_to_plot_right``,
+        ``hit_from_plot_right``, and ``hit_to_plot_right``.
     """
     # Iterate over alignments to find the shift value
-    for i, alignment in alignments.iterrows():
-        # Find the amount to add to shift the alignments the the right.
+    for _, alignment in alignments.iterrows():
+        # Find the amount to add to shift the alignments to the right.
         delta_query = size_longest_sequence - alignment["query_len"]
         delta_hit = size_longest_sequence - alignment["hit_len"]
+        alignment_number = alignment["alignment_number"]
+        alignment_mask = regions["alignment_number"] == alignment_number
+
         # Change the values fo the regions used for plotting.
-        regions.loc[regions["alignment_number"] == i, "query_from_plot_right"] = (
-            regions.loc[regions["alignment_number"] == i, "query_from"] + delta_query
+        regions.loc[alignment_mask, "query_from_plot_right"] = (
+            regions.loc[alignment_mask, "query_from"] + delta_query
         )
-        regions.loc[regions["alignment_number"] == i, "query_to_plot_right"] = (
-            regions.loc[regions["alignment_number"] == i, "query_to"] + delta_query
+        regions.loc[alignment_mask, "query_to_plot_right"] = (
+            regions.loc[alignment_mask, "query_to"] + delta_query
         )
-        regions.loc[regions["alignment_number"] == i, "hit_from_plot_right"] = (
-            regions.loc[regions["alignment_number"] == i, "hit_from"] + delta_hit
+        regions.loc[alignment_mask, "hit_from_plot_right"] = (
+            regions.loc[alignment_mask, "hit_from"] + delta_hit
         )
-        regions.loc[regions["alignment_number"] == i, "hit_to_plot_right"] = (
-            regions.loc[regions["alignment_number"] == i, "hit_to"] + delta_hit
+        regions.loc[alignment_mask, "hit_to_plot_right"] = (
+            regions.loc[alignment_mask, "hit_to"] + delta_hit
         )
 
     return alignments, regions
+
+
+if __name__ == "__main__":
+    gb_records = pd.DataFrame(
+        {
+            "file_number": [5, 8, 12],
+            "length": [1000, 600, 800],
+            "sequence_start": [1, 1, 1],
+            "sequence_end": [1000, 600, 800],
+        }
+    )
+
+    cds = pd.DataFrame(
+        {
+            "file_number": [5, 8, 12],
+            "start": [100, 100, 100],
+            "end": [200, 200, 200],
+        }
+    )
+
+    for i, row in gb_records.iterrows():
+        cds_mask = cds["file_number"] == row["file_number"]
+        print(f"i: {i}, row: \n{row}")
+        print(f"cds_mask: \n{cds_mask}")
+        print(f"type of cds_mask: {type(cds_mask)}")
+    # _, cds = include_coordinates_to_center_align_sequences(
+    #     gb_records=gb_records,
+    #     cds=cds,
+    # )
+    # print(cds)
