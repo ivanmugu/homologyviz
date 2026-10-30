@@ -50,21 +50,49 @@ class Arrow:
 
     def __init__(
         self,
-        x1: float,
-        x2: float,
-        y: float,
+        x1: int | float,
+        x2: int | float,
+        y: int | float,
         ratio_tail_head_width: float = 0.5,
-        head_width: float = 2,
-        head_height: float = 200,
+        head_width: int | float = 2,
+        head_height: int | float = 200,
     ):
+        # Validate arrow dimensions.
+        if not 0 < ratio_tail_head_width <= 1:
+            raise ValueError(
+                "ratio_tail_head_width must be greater than 0 and less or equal to 1."
+            )
+
+        if head_width <= 0:
+            raise ValueError("head_width must be greater than 0.")
+
+        if head_height <= 0:
+            raise ValueError("head_height must be greater than 0.")
+
+        if x1 == x2:
+            raise ValueError("x1 and x2 must be different.")
+
+        # Initialize arrow attributes.
         self.x1 = x1
         self.x2 = x2
         self.y = y
         self.ratio_tail_head_width = ratio_tail_head_width
-        self.tail_width = head_width * ratio_tail_head_width
         self.head_width = head_width
         self.head_height = head_height
+
+        # Calculate arrow geometry
+        self.tail_width = head_width * ratio_tail_head_width
         self.head_shoulder = (head_width - self.tail_width) / 2
+
+    def __repr__(self) -> str:
+        """Return a developer-friendly representation of the arrow."""
+        return (
+            f"Arrow(x1={self.x1!r}, x2={self.x2!r}, "
+            f"y={self.y!r}, "
+            f"ratio_tail_head_width={self.ratio_tail_head_width!r}, "
+            f"head_width={self.head_width!r}, "
+            f"head_height={self.head_height!r})"
+        )
 
     def coordinates_arrow_forward(self) -> tuple[ndarray, ndarray]:
         """
@@ -75,7 +103,6 @@ class Arrow:
         tuple of np.ndarray
             Arrays representing x and y coordinates of the arrow polygon.
         """
-        # TODO: Add __repr__ method for better debugging and logging.
 
         height = self.x2 - self.x1
         # If total height is smaller or equal to the arrow's head hight, then plot
