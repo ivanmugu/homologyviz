@@ -1,0 +1,17 @@
+# .gitignore
+.DS_Store
+data
+misc
+results
+__pycache__
+tmp
+venv*
+build
+*egg-info*
+dist
+deprecated.py
+personal
+.coverage
+for_me
+notes.md
+pruebas/
