@@ -82,7 +82,6 @@ class Arrow:
 
         # Calculate arrow geometry
         self.tail_width = head_width * ratio_tail_head_width
-        self.head_shoulder = (head_width - self.tail_width) / 2
 
     def __repr__(self) -> str:
         """Return a developer-friendly representation of the arrow."""
@@ -94,130 +93,77 @@ class Arrow:
             f"head_height={self.head_height!r})"
         )
 
-    def coordinates_arrow_forward(self) -> tuple[ndarray, ndarray]:
-        """
-        Compute coordinates for a right-pointing arrow.
-
-        Returns
-        -------
-        tuple of np.ndarray
-            Arrays representing x and y coordinates of the arrow polygon.
-        """
-
-        height = self.x2 - self.x1
-        # If total height is smaller or equal to the arrow's head hight, then plot
-        # only head
-        if height <= self.head_height:
-            x_1 = self.x1
-            x_2 = self.x1
-            x_3 = self.x2
-            x_4 = self.x1
-            x_5 = self.x1
-            y_1 = self.y
-            y_2 = self.y + (self.head_width * 0.5)
-            y_3 = self.y
-            y_4 = self.y - (self.head_width * 0.5)
-            y_5 = self.y
-            x_values = np.array([x_1, x_2, x_3, x_4, x_5])
-            y_values = np.array([y_1, y_2, y_3, y_4, y_5])
-            return (x_values, y_values)
-        # Tail x-values
-        x_1 = self.x1
-        x_2 = self.x1
-        # Head x-values
-        x_3 = self.x2 - self.head_height
-        x_4 = self.x2 - self.head_height
-        x_5 = self.x2
-        x_6 = self.x2 - self.head_height
-        x_7 = self.x2 - self.head_height
-        # Tail x-values
-        x_8 = self.x1
-        x_9 = self.x1
-        # Tail y-values
-        y_1 = self.y
-        y_2 = self.y + (self.tail_width * 0.5)
-        # Head y-values
-        y_3 = self.y + (self.tail_width * 0.5)
-        y_4 = self.y + (self.tail_width * 0.5) + self.head_shoulder
-        y_5 = self.y
-        y_6 = self.y - (self.tail_width * 0.5) - self.head_shoulder
-        y_7 = self.y - (self.tail_width * 0.5)
-        # Tail y-values
-        y_8 = self.y - (self.tail_width * 0.5)
-        y_9 = self.y
-        # make datapoints for plotting
-        x_values = np.array([x_1, x_2, x_3, x_4, x_5, x_6, x_7, x_8, x_9])
-        y_values = np.array([y_1, y_2, y_3, y_4, y_5, y_6, y_7, y_8, y_9])
-        return (x_values, y_values)
-
-    def coordinates_arrow_reverse(self) -> tuple[ndarray, ndarray]:
-        """
-        Compute coordinates for a left-pointing arrow.
-
-        Returns
-        -------
-        tuple of np.ndarray
-            Arrays representing x and y coordinates of the arrow polygon.
-        """
-        height = self.x1 - self.x2
-        # If total height is smaller or equal to the arrow's head hight plot
-        # only head
-        if height <= self.head_height:
-            x_1 = self.x1
-            x_2 = self.x1
-            x_3 = self.x2
-            x_4 = self.x1
-            x_5 = self.x1
-            y_1 = self.y
-            y_2 = self.y - (self.head_width * 0.5)
-            y_3 = self.y
-            y_4 = self.y + (self.head_width * 0.5)
-            y_5 = self.y
-            x_values = np.array([x_1, x_2, x_3, x_4, x_5])
-            y_values = np.array([y_1, y_2, y_3, y_4, y_5])
-            return (x_values, y_values)
-        # Tail x-values
-        x_1 = self.x1
-        x_2 = self.x1
-        # Head x-values
-        x_3 = self.x2 + self.head_height
-        x_4 = self.x2 + self.head_height
-        x_5 = self.x2
-        x_6 = self.x2 + self.head_height
-        x_7 = self.x2 + self.head_height
-        # Tail x-values
-        x_8 = self.x1
-        x_9 = self.x1
-        # Tail y-values
-        y_1 = self.y
-        y_2 = self.y - (self.tail_width * 0.5)
-        # Head y-values
-        y_3 = self.y - (self.tail_width * 0.5)
-        y_4 = self.y - (self.tail_width * 0.5) - self.head_shoulder
-        y_5 = self.y
-        y_6 = self.y + (self.tail_width * 0.5) + self.head_shoulder
-        y_7 = self.y + (self.tail_width * 0.5)
-        # Tail y-values
-        y_8 = self.y + (self.tail_width * 0.5)
-        y_9 = self.y
-        # make datapoints for plotting
-        x_values = np.array([x_1, x_2, x_3, x_4, x_5, x_6, x_7, x_8, x_9])
-        y_values = np.array([y_1, y_2, y_3, y_4, y_5, y_6, y_7, y_8, y_9])
-        return (x_values, y_values)
-
     def get_coordinates(self) -> tuple[ndarray, ndarray]:
         """
-        Get coordinates for either a forward or reverse arrow depending on direction.
+        Generate polygon coordinates for a forward or reverse arrow.
 
         Returns
         -------
         tuple of np.ndarray
-            Arrays representing x and y coordinates of the arrow polygon.
+            Arrays containing the x and y coordinates of the arrow polygon.
         """
-        if self.x1 < self.x2:
-            return self.coordinates_arrow_forward()
-        else:
-            return self.coordinates_arrow_reverse()
+        direction = 1 if self.x2 > self.x1 else -1
+
+        length = abs(self.x2 - self.x1)
+
+        # Short arrows consist only of a triangular head.
+        if length <= self.head_height:
+            x_values = np.array(
+                [
+                    self.x1,
+                    self.x1,
+                    self.x2,
+                    self.x1,
+                    self.x1,
+                ]
+            )
+
+            y_values = np.array(
+                [
+                    self.y,
+                    self.y + direction * self.head_width / 2,
+                    self.y,
+                    self.y - direction * self.head_width / 2,
+                    self.y,
+                ]
+            )
+
+            return x_values, y_values
+
+        # Calculate the beginning of the arrowhead.
+        head_start = self.x2 - direction * self.head_height
+
+        # Generate x-coordinates.
+        x_values = np.array(
+            [
+                self.x1,
+                self.x1,
+                head_start,
+                head_start,
+                self.x2,
+                head_start,
+                head_start,
+                self.x1,
+                self.x1,
+            ]
+        )
+
+        # Generate y-coordinates.
+        y_values = np.array(
+            [
+                self.y,
+                self.y + direction * self.tail_width / 2,
+                self.y + direction * self.tail_width / 2,
+                self.y + direction * self.head_width / 2,
+                self.y,
+                self.y - direction * self.head_width / 2,
+                self.y - direction * self.tail_width / 2,
+                self.y - direction * self.tail_width / 2,
+                self.y,
+            ]
+        )
+
+        return x_values, y_values
 
 
 if __name__ == "__main__":
@@ -226,7 +172,7 @@ if __name__ == "__main__":
     ####################
 
     # Make arrow
-    arrow1 = Arrow(x1=750, x2=2000, y=10)
+    arrow1 = Arrow(x1=750, x2=2000, y=10, ratio_tail_head_width=1.0)
     x_values, y_values = arrow1.get_coordinates()
     print(x_values)
     print(y_values)
