@@ -80,9 +80,6 @@ class Arrow:
         self.head_width = head_width
         self.head_height = head_height
 
-        # Calculate arrow geometry
-        self.tail_width = head_width * ratio_tail_head_width
-
     def __repr__(self) -> str:
         """Return a developer-friendly representation of the arrow."""
         return (
@@ -92,6 +89,11 @@ class Arrow:
             f"head_width={self.head_width!r}, "
             f"head_height={self.head_height!r})"
         )
+
+    @property
+    def tail_width(self) -> float:
+        """Return the width fo the arrow tail."""
+        return self.head_width * self.ratio_tail_head_width
 
     def get_coordinates(self) -> tuple[ndarray, ndarray]:
         """

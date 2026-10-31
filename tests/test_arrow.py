@@ -189,5 +189,27 @@ def test_forward_reverse_symmetry():
     np.testing.assert_allclose(reverse_y, expected_reverse_y)
 
 
+def test_arrow_properties():
+    arrow = Arrow(
+        x1=100,
+        x2=1000,
+        y=10,
+        ratio_tail_head_width=0.5,
+        head_width=2,
+    )
+
+    assert arrow.tail_width == 1
+
+    # Modify head width.
+    arrow.head_width = 4
+
+    assert arrow.tail_width == 2
+
+    # Modify the ratio.
+    arrow.ratio_tail_head_width = 0.25
+
+    assert arrow.tail_width == 1
+
+
 if __name__ == "__main__":
     test_forward_reverse_symmetry()
